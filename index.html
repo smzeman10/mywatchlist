@@ -189,6 +189,19 @@
   .credits .tmdb-fallback{display:inline-flex; align-items:center; gap:6px; font-weight:800;
     font-size:13px; color:#fff; background:#032541; padding:6px 12px; border-radius:8px}
   .credits p{font-size:11.5px; margin:9px auto 0; max-width:340px; line-height:1.45}
+.detail-modal{max-width:560px}
+.detail-head{display:flex;gap:14px;align-items:flex-start}
+.detail-poster{width:96px;min-width:96px;height:144px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:32px}
+.detail-poster img{width:100%;height:100%;object-fit:cover}
+.detail-info h2{margin:0 0 4px;font-size:20px}
+.detail-year{color:var(--muted);font-weight:700}
+.detail-meta{font-size:13px;color:var(--muted);margin-bottom:4px}
+.detail-genres{font-size:12px;color:var(--cherry);font-weight:700;margin-bottom:6px}
+.detail-mine{font-size:13px;margin-top:6px}
+.detail-overview{font-size:14px;line-height:1.55;margin:14px 0 10px}
+.detail-row{font-size:13px;margin:6px 0}
+.detail-loading{padding:36px;text-align:center;color:var(--muted)}
+.detail-jw{font-size:10px;color:var(--muted);margin-top:6px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -204,6 +217,14 @@
 
   <div class="filters" id="filters"></div>
   <div id="content"></div>
+
+  <!-- Detail modal -->
+  <div class="scrim" id="detail-scrim">
+    <div class="modal detail-modal">
+      <div id="detail-body"></div>
+      <div class="modal-actions"><button class="btn-ghost" style="flex:1" onclick="closeModal('detail-scrim')">Close</button></div>
+    </div>
+  </div>
 
   <footer class="credits">
     <a href="https://www.themoviedb.org/" target="_blank" rel="noopener" class="tmdb-link" aria-label="The Movie Database (TMDB)">
@@ -471,6 +492,7 @@ const GROUPS = [
 let currentPage = 'rec';
 let prevPage = 'rec';
 let filterState = {type:'any', moods:new Set(), genres:new Set(), spice:'any'};
+let filterMode = 'any'; // 'any' = match at least one tag, 'all' = must match every tag
 let trendingCache = null;
 
 /* ---------------- helpers ---------------- */
@@ -490,15 +512,17 @@ function fmtMonth(d){ if(!d) return ''; const dt=new Date(d); return isNaN(dt)?'
 function passesFilter(i){
   if(filterState.type!=='any' && i.type!==filterState.type) return false;
   if(filterState.spice!=='any' && i.spice!==Number(filterState.spice)) return false;
-  if(filterState.moods.size && ![...filterState.moods].some(m=>i.moods.includes(m))) return false;
-  if(filterState.genres.size && ![...filterState.genres].some(g=>i.genres.includes(g))) return false;
+  const fn = filterMode==='all' ? 'every' : 'some';
+  if(filterState.moods.size && ![...filterState.moods][fn](m=>i.moods.includes(m))) return false;
+  if(filterState.genres.size && ![...filterState.genres][fn](g=>i.genres.includes(g))) return false;
   return true;
 }
 function recPasses(r){
   if(filterState.type!=='any' && r.type!==filterState.type) return false;
   if(filterState.spice!=='any' && (r.spice==null || r.spice!==Number(filterState.spice))) return false;
-  if(filterState.moods.size && !(r.moods||[]).some(m=>filterState.moods.has(m))) return false;
-  if(filterState.genres.size && !(r.genres||[]).some(g=>filterState.genres.has(g))) return false;
+  const fn = filterMode==='all' ? 'every' : 'some';
+  if(filterState.moods.size && ![...filterState.moods][fn](m=>(r.moods||[]).includes(m))) return false;
+  if(filterState.genres.size && ![...filterState.genres][fn](g=>(r.genres||[]).includes(g))) return false;
   return true;
 }
 function filtersActive(){ return filterState.type!=='any'||filterState.spice!=='any'||filterState.moods.size>0||filterState.genres.size>0; }
@@ -517,7 +541,12 @@ function renderFilters(){
   const spiceChips = [['any','Any'],['1','🌶'],['2','🌶🌶'],['3','🌶🌶🌶']].map(([v,l])=>`<button class="chip spice ${filterState.spice===v?'on':''}" onclick="setSpice('${v}')">${l}</button>`).join('');
   const hc = library.filter(i=>i.hidden).length;
   const hiddenLink = (hc||currentPage==='hidden') ? `<div class="frow" style="justify-content:flex-end;margin:8px 0 0"><button class="hidden-link ${currentPage==='hidden'?'on':''}" onclick="toggleHidden()">${currentPage==='hidden'?'✕ close not-interested':`🙈 Not interested (${hc})`}</button></div>` : '';
+  const modeSwitch = `<div class="frow"><span class="flabel">Match</span>`+
+    `<button class="chip ${filterMode==='any'?'on':''}" onclick="setFilterMode('any')">any tag</button>`+
+    `<button class="chip ${filterMode==='all'?'on':''}" onclick="setFilterMode('all')">all tags</button>`+
+    `<span style="font-size:11px;color:var(--muted);margin-left:6px">${filterMode==='all'?'must match every tag you pick':'matches at least one'}</span></div>`;
   document.getElementById('filters').innerHTML =
+    modeSwitch +
     `<div class="frow"><span class="flabel">Type</span>${typeChips}<button class="clear" onclick="clearFilters()">clear all</button></div>
      <div class="frow"><span class="flabel">Spice</span>${spiceChips}</div>
      <div class="frow"><span class="flabel">Mood</span>${moodChips}</div>
@@ -527,7 +556,7 @@ function cardHTML(i){
   const alert = isAlert(i);
   let btn = '';
   if(i.hidden) btn = `<button class="act-btn edit-btn" onclick="unhide(${i.id})">↩︎ Bring back</button>`;
-  else if(alert) btn = `<button class="act-btn log-btn" onclick="caughtUp(${i.id})">✓ Caught up — seen it</button>`;
+  else if(alert) btn = `<button class="act-btn log-btn" onclick="caughtUp(${i.id})">✓ I watched the new season</button>`;
   else if(i.status==='rec') btn = `<button class="act-btn heart-btn ${i.hearted?'done':''}" onclick="heart(${i.id})">${i.hearted?'♥ Added':'♡ Want to watch'}</button><button class="not-btn" onclick="hideItem(${i.id})">🙈 Not interested</button>`;
   else if(i.status==='want') btn = `<button class="act-btn log-btn" onclick="openEntry(${i.id})">✓ Log &amp; rate</button>`;
   else btn = `<button class="act-btn edit-btn" onclick="openEntry(${i.id})">✏️ Edit</button>`;
@@ -535,10 +564,12 @@ function cardHTML(i){
   const seasonBadge = alert ? `<div class="season-badge">🔔 New season</div>` : '';
   const stars = i.rating ? `<div class="stars">${starStr(i.rating)}</div>` : '';
   const alertMeta = alert ? `<span style="color:var(--cherry);font-weight:800">🔔 New season ${fmtMonth(i.newSeasonAir)}</span>` : '';
+  const clickAttr = i.tmdbId ? `onclick="openDetail(${i.tmdbId},'${i.type}',${i.id})"` : '';
+  const cp = i.tmdbId ? ';cursor:pointer' : '';
   return `<div class="card">
-    <div class="poster" style="background:${gradFor(i)}">${posterHTML(i)}${comfortBadge}${seasonBadge}<div class="type-tag">${i.type==='movie'?'Movie':'Show'}</div></div>
+    <div class="poster" style="background:${gradFor(i)}${cp}" ${clickAttr}>${posterHTML(i)}${comfortBadge}${seasonBadge}<div class="type-tag">${i.type==='movie'?'Movie':'Show'}</div></div>
     <div class="cbody">
-      <div class="ctitle">${i.title}</div>
+      <div class="ctitle" style="cursor:${i.tmdbId?'pointer':'default'}" ${clickAttr}>${i.title}</div>
       ${stars}
       <div class="cmeta">${i.genres[0]||'untagged'}${i.spice>0?`<span class="chili">${chiliStr(i.spice)}</span>`:''}${alertMeta}</div>
       ${btn}
@@ -564,15 +595,20 @@ function renderContent(){
     return;
   }
   if(currentPage==='rec'){
-    const refreshBox = `<div class="rec-refresh"><button onclick="refreshRecs()">🔄 Refresh your recommendations</button>${recsLoading?'<span class="rec-loading">finding picks…</span>':''}</div>`;
+    const refreshBox = `<div class="rec-refresh"><button onclick="refreshRecs()">🔄 Refresh your recommendations</button>${(recsLoading||filterRecsLoading)?'<span class="rec-loading">finding picks…</span>':''}</div>`;
     let html = refreshBox + trendingHTML();
-    const dyn = recs.filter(recPasses);
+    const active = filtersActive();
+    const dyn = active ? filterRecs : recs.filter(recPasses);
     const handp = library.filter(i=>i.status==='rec' && !i.hidden && passesFilter(i));
     const combined = [...dyn, ...handp];
+    const loading = active ? filterRecsLoading : recsLoading;
     html += `<div class="tiergroup"><div class="tierhead"><h3>✨ Recommended for you</h3><div class="rule"></div></div>`;
     html += combined.length
       ? `<div class="grid">${combined.map(r=> r.status===undefined ? recCardHTML(r) : cardHTML(r)).join('')}</div>`
-      : `<div class="empty" style="padding:20px"><span>🌷</span>${recsLoading?'Finding picks for your taste…':'Nothing matches those filters — try fewer, or hit refresh.'}</div>`;
+      : `<div class="empty" style="padding:20px"><span>🌷</span>${loading?'Finding picks for your taste…':'Nothing matched — try a different tag or hit refresh.'}</div>`;
+    if(active && filterRecs.length){
+      html += `<div style="text-align:center;margin-top:16px">${filterRecsLoading?'<span class="rec-loading">finding more…</span>':`<button class="refresh-btn" onclick="showMoreRecs()">＋ Show more</button>`}</div>`;
+    }
     html += `</div>`;
     box.innerHTML = html;
     return;
@@ -595,12 +631,13 @@ function renderContent(){
 function renderAll(){ renderNav(); renderFilters(); renderContent(); }
 
 /* ---------------- filter actions ---------------- */
-function go(p){ currentPage=p; renderAll(); }
+function go(p){ currentPage=p; onFiltersChanged(); renderAll(); }
 function toggleHidden(){ if(currentPage==='hidden'){ currentPage=prevPage||'rec'; } else { prevPage=currentPage; currentPage='hidden'; } renderAll(); }
-function setType(v){ filterState.type=v; renderAll(); }
-function setSpice(v){ filterState.spice=v; renderAll(); }
-function toggleSet(k,v){ const s=filterState[k]; s.has(v)?s.delete(v):s.add(v); renderAll(); }
-function clearFilters(){ filterState={type:'any',moods:new Set(),genres:new Set(),spice:'any'}; renderAll(); }
+function setFilterMode(m){ filterMode=m; onFiltersChanged(); renderAll(); }
+function setType(v){ filterState.type=(filterState.type===v&&v!=='any')?'any':v; onFiltersChanged(); renderAll(); }
+function setSpice(v){ filterState.spice=(filterState.spice===v&&v!=='any')?'any':v; onFiltersChanged(); renderAll(); }
+function toggleSet(k,v){ const s=filterState[k]; s.has(v)?s.delete(v):s.add(v); onFiltersChanged(); renderAll(); }
+function clearFilters(){ filterState={type:'any',moods:new Set(),genres:new Set(),spice:'any'}; onFiltersChanged(); renderAll(); }
 function heart(id){
   const it = library.find(i=>i.id===id); it.hearted=true; renderContent();
   setTimeout(()=>{ it.status='want'; saveLibrary(); renderAll(); }, 550);
@@ -746,6 +783,37 @@ document.querySelectorAll('#surprise-mode button').forEach(b=>{
 });
 function openSurprise(){ document.getElementById('surprise-result').innerHTML=''; document.getElementById('surprise-scrim').classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+async function openDetail(tmdbId, type, libId){
+  const scrim=document.getElementById('detail-scrim'), body=document.getElementById('detail-body');
+  scrim.classList.add('show');
+  body.innerHTML=`<div class="detail-loading">Loading…</div>`;
+  const media = type==='movie'?'movie':'tv';
+  const d = await tmdbGet(`/${media}/${tmdbId}?append_to_response=credits,watch/providers`);
+  if(!d){ body.innerHTML=`<h2>Couldn't load details</h2><p class="sub">Try again in a moment.</p>`; return; }
+  const title=d.title||d.name||'';
+  const year=(d.release_date||d.first_air_date||'').slice(0,4);
+  const rating=d.vote_average?d.vote_average.toFixed(1):null;
+  const genres=(d.genres||[]).map(g=>g.name).join(' · ');
+  const cast=(d.credits&&d.credits.cast||[]).slice(0,6).map(c=>c.name).join(', ');
+  const runtime = d.runtime ? d.runtime+' min' : (d.number_of_seasons ? d.number_of_seasons+' season'+(d.number_of_seasons>1?'s':'') : '');
+  const prov = ((d['watch/providers']&&d['watch/providers'].results&&d['watch/providers'].results.US&&d['watch/providers'].results.US.flatrate)||[]).map(x=>x.provider_name);
+  const lib = libId!=null ? library.find(i=>i.id===libId) : null;
+  const mine = lib ? `<div class="detail-mine">Your take: ${lib.rating?starStr(lib.rating):'not rated'} ${lib.comfort?'⭐':''} ${lib.spice>0?chiliStr(lib.spice):''}</div>` : '';
+  body.innerHTML = `
+    <div class="detail-head">
+      <div class="detail-poster" style="background:${GRADS[tmdbId%GRADS.length]}">${d.poster_path?`<img src="${IMG+d.poster_path}" alt="">`:'🎬'}</div>
+      <div class="detail-info">
+        <h2>${title}${year?` <span class="detail-year">(${year})</span>`:''}</h2>
+        <div class="detail-meta">${type==='movie'?'Movie':'Show'}${runtime?' · '+runtime:''}${rating?` · ⭐ ${rating}/10 TMDB`:''}</div>
+        <div class="detail-genres">${genres}</div>
+        ${mine}
+      </div>
+    </div>
+    <p class="detail-overview">${d.overview||'No description available.'}</p>
+    ${cast?`<div class="detail-row"><b>Cast:</b> ${cast}</div>`:''}
+    ${prov.length?`<div class="detail-row"><b>Where to watch (US):</b> ${prov.join(', ')}</div><div class="detail-jw">Streaming availability from JustWatch</div>`:`<div class="detail-row" style="color:var(--muted)">Streaming info not listed</div>`}
+  `;
+}
 function rollSurprise(){
   const type=document.getElementById('surprise-type').value;
   const ok = i => !i.hidden && (type==='any' || i.type===type);
@@ -783,12 +851,19 @@ async function loadTrending(){
 function caughtUp(id){ const it=library.find(i=>i.id===id); it.ackAir=it.newSeasonAir; saveLibrary(); renderAll(); }
 async function checkNewSeasons(){
   const shows = library.filter(i=>i.tmdbId && i.type==='show' && (i.status==='watched'||i.status==='watching'));
+  const yearAgo = Date.now() - 365*864e5;
   let changed=false;
   for(const it of shows){
     const d = await tmdbGet(`/tv/${it.tmdbId}`);
     if(!d) continue;
-    let air=null; const nxt=d.next_episode_to_air;
-    if(nxt && nxt.air_date && nxt.episode_number===1) air=nxt.air_date;
+    // most recent real season premiere (aired), plus any announced upcoming premiere
+    let latest=null;
+    (d.seasons||[]).forEach(s=>{ if(s.season_number>=1 && s.air_date && (!latest || s.air_date>latest)) latest=s.air_date; });
+    const nxt=d.next_episode_to_air;
+    if(nxt && nxt.air_date && nxt.episode_number===1 && (!latest || nxt.air_date>latest)) latest=nxt.air_date;
+    // only flag it if that premiere landed within the past year (or is upcoming)
+    let air=null;
+    if(latest){ const t=new Date(latest).getTime(); if(!isNaN(t) && t>=yearAgo) air=latest; }
     if(air!==it.newSeasonAir){ it.newSeasonAir=air; changed=true; }
   }
   if(changed){ saveLibrary(); renderAll(); }
@@ -821,7 +896,7 @@ function enrichTags(d){
   if(kw('period drama','costume drama','regency','victorian','19th century','18th century')) genres.add('period');
   if(kw('high school','teenage','young adult','coming of age','coming-of-age')) genres.add('teen drama');
   if(kw('coming of age','coming-of-age')) genres.add('coming-of-age');
-  if(kw('christmas','holiday season','santa','xmas')) genres.add('holiday');
+  if(kw('christmas','holiday season','santa','xmas')&&(hasG(10751)||hasG(10749)||hasG(35)||hasG(16))) genres.add('holiday');
   if(kw('vampire','werewolf','witch','supernatural','ghost','zombie','paranormal')) genres.add('supernatural');
   if(kw('hospital','doctor','nurse','surgeon','medical')) genres.add('medical');
   if(kw('football','basketball','hockey','soccer','baseball','sports','athlete','olympics')) genres.add('sports');
@@ -882,6 +957,62 @@ async function buildRecs(page){
   recsLoading=false; if(currentPage==='rec') renderContent();
 }
 function refreshRecs(){ recPage = recPage%3 + 1; buildRecs(recPage); }
+
+/* ---- filter-as-discovery: when she filters, go FETCH matching titles ranked by her taste ---- */
+let filterRecs=[], filterRecsLoading=false, filterToken=0, filterDiscoverTimer=null;
+const keywordCache={};
+const CUSTOM_KW={'teen drama':'high school','coming-of-age':'coming of age','true story':'based on a true story','period':'period drama','supernatural':'supernatural','medical':'hospital','sports':'sports','holiday':'christmas','dance':'dance','disney':'disney'};
+async function keywordId(tag){ if(tag in keywordCache) return keywordCache[tag]; let id=null; try{ const d=await tmdbGet('/search/keyword?query='+encodeURIComponent(tag)); id=(d?.results||[])[0]?.id||null; }catch(e){} keywordCache[tag]=id; return id; }
+function onFiltersChanged(){
+  if(currentPage==='rec' && filtersActive()){ clearTimeout(filterDiscoverTimer); filterDiscoverTimer=setTimeout(runFilterDiscovery,350); }
+  else { filterRecs=[]; filterRecsLoading=false; filterToken++; }
+}
+let filterPage=1;
+async function runFilterDiscovery(more){
+  const my=++filterToken;
+  if(more) filterPage++; else { filterPage=1; filterRecs=[]; }
+  filterRecsLoading=true; if(currentPage==='rec') renderContent();
+  const p=tasteProfile();
+  const gids=[], kwIds=[]; let originKR=false; let needsEnrich = filterState.moods.size>0;
+  for(const g of [...filterState.genres]){
+    if(TAG_TO_TMDB[g]) TAG_TO_TMDB[g].forEach(id=>gids.push(id));
+    else if(g==='k-drama'){ originKR=true; needsEnrich=true; }
+    else if(g==='dramedy'){ gids.push(18,35); }
+    else if(g==='reality'){ gids.push(10764); }
+    else { const id=await keywordId(CUSTOM_KW[g]||g); if(id) kwIds.push(id); needsEnrich=true; }
+  }
+  const parts=[]; const allG=[...new Set(gids)];
+  if(allG.length) parts.push('with_genres='+allG.join('%7C'));
+  if(kwIds.length) parts.push('with_keywords='+kwIds.join('%7C'));
+  if(originKR) parts.push('with_origin_country=KR');
+  const qs=(parts.length?parts.join('&')+'&':'')+'sort_by=popularity.desc&vote_count.gte=40';
+  const types = filterState.type==='movie'?['movie']:filterState.type==='show'?['tv']:['movie','tv'];
+  const pagesToFetch = needsEnrich ? 1 : 3; // plain genre filters can pull several pages fast (no per-title lookups)
+  const raw=[];
+  for(let pg=0; pg<pagesToFetch; pg++){
+    for(const media of types){ const d=await tmdbGet('/discover/'+media+'?'+qs+'&page='+(filterPage+pg)); (d?.results||[]).forEach(r=>{ r._media=media; raw.push(r); }); }
+  }
+  if(!needsEnrich) filterPage += (pagesToFetch-1);
+  raw.sort((a,b)=>(b.popularity||0)-(a.popularity||0));
+  const existing=new Set(filterRecs.map(x=>x.tmdbId));
+  const out=[];
+  for(const r of raw){
+    if(needsEnrich && out.length>=18) break;
+    const title=r.title||r.name||''; if(!title) continue;
+    if(p.excludeTmdb.has(r.id)||p.excludeTitle.has(title.toLowerCase())||dismissedRecs.includes(r.id)||existing.has(r.id)) continue;
+    let genres=(r.genre_ids||[]).map(id=>TMDB_GENRE[id]).filter(Boolean), moods=[];
+    if(needsEnrich){ const d=await tmdbGet('/'+r._media+'/'+r.id+'?append_to_response=keywords'); if(d){ const e=enrichTags(d); genres=[...new Set([...genres,...e.genres])]; moods=e.moods; } }
+    const obj={tmdbId:r.id,title,type:r._media==='movie'?'movie':'show',year:(r.release_date||r.first_air_date||'').slice(0,4),poster:r.poster_path?IMG+r.poster_path:'',genres:genres.length?genres:['other'],moods,spice:moods.includes('spicy')?2:0};
+    if(!recPasses(obj)) continue;
+    const taste=[...genres,...moods].reduce((s,t)=>s+(p.tagW[t]||0),0);
+    obj._score=(r.vote_average||0)*0.35+taste*1.6+(r.popularity?Math.min(r.popularity/200,1):0);
+    out.push(obj);
+  }
+  if(my!==filterToken) return;
+  filterRecs=[...filterRecs,...out].sort((a,b)=>(b._score||0)-(a._score||0));
+  filterRecsLoading=false; if(currentPage==='rec') renderContent();
+}
+function showMoreRecs(){ runFilterDiscovery(true); }
 function recsHTML(){
   const refresh = `<button class="refresh-btn" onclick="refreshRecs()">🔄 Refresh</button>`;
   const head = `<div class="tierhead"><h3>✨ Recommended for you</h3><div class="rule"></div>${refresh}</div>`;
@@ -891,27 +1022,29 @@ function recsHTML(){
   return `<div class="tiergroup">${head}<div class="grid">${shown.map(r=>recCardHTML(r)).join('')}</div></div>`;
 }
 function recCardHTML(r){
-  const idx = recs.indexOf(r);
+  const click=`onclick="openDetail(${r.tmdbId},'${r.type}')"`;
   return `<div class="card">
-    <div class="poster" style="background:${GRADS[r.tmdbId%GRADS.length]}">${r.poster?`<img src="${r.poster}" alt="">`:'🎬'}<div class="type-tag">${r.type==='movie'?'Movie':'Show'}</div></div>
+    <div class="poster" style="background:${GRADS[r.tmdbId%GRADS.length]};cursor:pointer" ${click}>${r.poster?`<img src="${r.poster}" alt="">`:'🎬'}<div class="type-tag">${r.type==='movie'?'Movie':'Show'}</div></div>
     <div class="cbody">
-      <div class="ctitle">${r.title}${r.year?` <span style="color:var(--muted);font-weight:700">(${r.year})</span>`:''}</div>
+      <div class="ctitle" style="cursor:pointer" ${click}>${r.title}${r.year?` <span style="color:var(--muted);font-weight:700">(${r.year})</span>`:''}</div>
       <div class="cmeta">${r.genres[0]||'picked for you'}</div>
-      <button class="act-btn heart-btn" onclick="heartRec(${idx})">♡ Want to watch</button>
-      <button class="not-btn" onclick="dismissRec(${idx})">🙈 Not interested</button>
+      <button class="act-btn heart-btn" onclick="heartRec(${r.tmdbId})">♡ Want to watch</button>
+      <button class="not-btn" onclick="dismissRec(${r.tmdbId})">🙈 Not interested</button>
     </div>
   </div>`;
 }
-function heartRec(idx){
-  const r=recs[idx]; if(!r) return;
-  library.push(mk({title:r.title, type:r.type, status:'want', rating:0, comfort:false, spice:0,
-    genres:r.genres.length?r.genres:['other'], moods:[], tmdbId:r.tmdbId, poster:r.poster||null, year:r.year||''}));
-  recs.splice(idx,1); saveLibrary(); renderAll();
+function findRec(tmdbId){ return recs.find(x=>x.tmdbId===tmdbId) || filterRecs.find(x=>x.tmdbId===tmdbId); }
+function heartRec(tmdbId){
+  const r=findRec(tmdbId); if(!r) return;
+  library.push(mk({title:r.title, type:r.type, status:'want', rating:0, comfort:false, spice:r.spice||0,
+    genres:(r.genres&&r.genres.length)?r.genres:['other'], moods:r.moods||[], tmdbId:r.tmdbId, poster:r.poster||null, year:r.year||''}));
+  recs=recs.filter(x=>x.tmdbId!==tmdbId); filterRecs=filterRecs.filter(x=>x.tmdbId!==tmdbId);
+  saveLibrary(); renderAll();
 }
-function dismissRec(idx){
-  const r=recs[idx]; if(!r) return;
-  if(r.tmdbId && !dismissedRecs.includes(r.tmdbId)){ dismissedRecs.push(r.tmdbId); saveDismissed(); }
-  recs.splice(idx,1); renderContent();
+function dismissRec(tmdbId){
+  if(!dismissedRecs.includes(tmdbId)){ dismissedRecs.push(tmdbId); saveDismissed(); }
+  recs=recs.filter(x=>x.tmdbId!==tmdbId); filterRecs=filterRecs.filter(x=>x.tmdbId!==tmdbId);
+  renderContent();
 }
 
 /* fills in TMDB ids + posters for your starter faves so recs/posters/season-alerts work from day one */
