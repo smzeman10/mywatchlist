@@ -189,6 +189,27 @@
   .credits .tmdb-fallback{display:inline-flex; align-items:center; gap:6px; font-weight:800;
     font-size:13px; color:#fff; background:#032541; padding:6px 12px; border-radius:8px}
   .credits p{font-size:11.5px; margin:9px auto 0; max-width:340px; line-height:1.45}
+@media(max-width:520px){
+  .wrap{padding:0 12px 110px}
+  header{padding-top:46px}
+  .account{top:10px; right:2px; font-size:12px; padding:6px 11px}
+  .tagline{font-size:13px}
+  nav{gap:4px}
+  .tab{font-size:13px; padding:8px 12px}
+  .filters{padding:12px 12px}
+  .flabel{min-width:100%; margin-bottom:2px}
+  .chip{padding:8px 13px; font-size:13px}
+  .grid{grid-template-columns:repeat(2,1fr); gap:12px}
+  .ctitle{font-size:13px}
+  .act-btn{font-size:12.5px; padding:8px 0}
+  .trend-card{flex-basis:104px}
+  .trend-poster{width:104px}
+  .detail-head{gap:10px}
+  .detail-poster{width:80px; min-width:80px; height:120px}
+  .detail-info h2{font-size:18px}
+  .fab{font-size:13px; padding:12px 18px}
+  .modal{padding:20px}
+}
 .detail-modal{max-width:560px}
 .detail-head{display:flex;gap:14px;align-items:flex-start}
 .detail-poster{width:96px;min-width:96px;height:144px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:32px}
@@ -287,9 +308,6 @@
       <button type="button" class="comfort-toggle" id="e-comfort" onclick="toggleComfort()">
         <span class="star">⭐</span><span id="e-comfort-label">Not a comfort rewatch</span>
       </button>
-    </div>
-    <div class="field"><label>Spice</label>
-      <select id="e-spice"><option value="0">None</option><option value="1">🌶</option><option value="2">🌶🌶</option><option value="3">🌶🌶🌶</option></select>
     </div>
     <div class="field"><label>Genres — tap any that fit</label><div class="chipwrap" id="e-genres"></div></div>
     <div class="field"><label>Moods — tap any that fit</label><div class="chipwrap" id="e-moods"></div></div>
@@ -491,7 +509,7 @@ const GROUPS = [
 ];
 let currentPage = 'rec';
 let prevPage = 'rec';
-let filterState = {type:'any', moods:new Set(), genres:new Set(), spice:'any'};
+let filterState = {type:'any', moods:new Set(), genres:new Set()};
 let filterMode = 'any'; // 'any' = match at least one tag, 'all' = must match every tag
 let trendingCache = null;
 
@@ -511,7 +529,6 @@ function isAlert(i){ return i.tmdbId && (i.status==='watched'||i.status==='watch
 function fmtMonth(d){ if(!d) return ''; const dt=new Date(d); return isNaN(dt)?'':dt.toLocaleString('en-US',{month:'long',year:'numeric'}); }
 function passesFilter(i){
   if(filterState.type!=='any' && i.type!==filterState.type) return false;
-  if(filterState.spice!=='any' && i.spice!==Number(filterState.spice)) return false;
   const fn = filterMode==='all' ? 'every' : 'some';
   if(filterState.moods.size && ![...filterState.moods][fn](m=>i.moods.includes(m))) return false;
   if(filterState.genres.size && ![...filterState.genres][fn](g=>i.genres.includes(g))) return false;
@@ -519,13 +536,12 @@ function passesFilter(i){
 }
 function recPasses(r){
   if(filterState.type!=='any' && r.type!==filterState.type) return false;
-  if(filterState.spice!=='any' && (r.spice==null || r.spice!==Number(filterState.spice))) return false;
   const fn = filterMode==='all' ? 'every' : 'some';
   if(filterState.moods.size && ![...filterState.moods][fn](m=>(r.moods||[]).includes(m))) return false;
   if(filterState.genres.size && ![...filterState.genres][fn](g=>(r.genres||[]).includes(g))) return false;
   return true;
 }
-function filtersActive(){ return filterState.type!=='any'||filterState.spice!=='any'||filterState.moods.size>0||filterState.genres.size>0; }
+function filtersActive(){ return filterState.type!=='any'||filterState.moods.size>0||filterState.genres.size>0; }
 
 /* ---------------- render ---------------- */
 function renderNav(){
@@ -535,10 +551,9 @@ function renderNav(){
   }).join('');
 }
 function renderFilters(){
-  const moodChips = allMoods().map(m=>`<button class="chip ${filterState.moods.has(m)?'on':''}" onclick="toggleSet('moods','${m}')">${m}</button>`).join('');
-  const genreChips = allGenres().map(g=>`<button class="chip ${filterState.genres.has(g)?'on':''}" onclick="toggleSet('genres','${g}')">${GENRE_EMOJI[g]||'🎬'} ${g}</button>`).join('');
+  const moodChips = [...MOOD_LIST].sort().map(m=>`<button class="chip ${filterState.moods.has(m)?'on':''}" onclick="toggleSet('moods','${m}')">${m}</button>`).join('');
+  const genreChips = [...GENRE_LIST].sort().map(g=>`<button class="chip ${filterState.genres.has(g)?'on':''}" onclick="toggleSet('genres','${g}')">${GENRE_EMOJI[g]||'🎬'} ${g}</button>`).join('');
   const typeChips = [['any','All'],['movie','🎬 Movies'],['show','📺 Shows']].map(([v,l])=>`<button class="chip ${filterState.type===v?'on':''}" onclick="setType('${v}')">${l}</button>`).join('');
-  const spiceChips = [['any','Any'],['1','🌶'],['2','🌶🌶'],['3','🌶🌶🌶']].map(([v,l])=>`<button class="chip spice ${filterState.spice===v?'on':''}" onclick="setSpice('${v}')">${l}</button>`).join('');
   const hc = library.filter(i=>i.hidden).length;
   const hiddenLink = (hc||currentPage==='hidden') ? `<div class="frow" style="justify-content:flex-end;margin:8px 0 0"><button class="hidden-link ${currentPage==='hidden'?'on':''}" onclick="toggleHidden()">${currentPage==='hidden'?'✕ close not-interested':`🙈 Not interested (${hc})`}</button></div>` : '';
   const modeSwitch = `<div class="frow"><span class="flabel">Match</span>`+
@@ -548,7 +563,6 @@ function renderFilters(){
   document.getElementById('filters').innerHTML =
     modeSwitch +
     `<div class="frow"><span class="flabel">Type</span>${typeChips}<button class="clear" onclick="clearFilters()">clear all</button></div>
-     <div class="frow"><span class="flabel">Spice</span>${spiceChips}</div>
      <div class="frow"><span class="flabel">Mood</span>${moodChips}</div>
      <div class="frow"><span class="flabel">Genre</span>${genreChips}</div>${hiddenLink}`;
 }
@@ -571,7 +585,7 @@ function cardHTML(i){
     <div class="cbody">
       <div class="ctitle" style="cursor:${i.tmdbId?'pointer':'default'}" ${clickAttr}>${i.title}</div>
       ${stars}
-      <div class="cmeta">${i.genres[0]||'untagged'}${i.spice>0?`<span class="chili">${chiliStr(i.spice)}</span>`:''}${alertMeta}</div>
+      <div class="cmeta">${i.genres[0]||'untagged'}${alertMeta}</div>
       ${btn}
     </div>
   </div>`;
@@ -635,9 +649,8 @@ function go(p){ currentPage=p; onFiltersChanged(); renderAll(); }
 function toggleHidden(){ if(currentPage==='hidden'){ currentPage=prevPage||'rec'; } else { prevPage=currentPage; currentPage='hidden'; } renderAll(); }
 function setFilterMode(m){ filterMode=m; onFiltersChanged(); renderAll(); }
 function setType(v){ filterState.type=(filterState.type===v&&v!=='any')?'any':v; onFiltersChanged(); renderAll(); }
-function setSpice(v){ filterState.spice=(filterState.spice===v&&v!=='any')?'any':v; onFiltersChanged(); renderAll(); }
 function toggleSet(k,v){ const s=filterState[k]; s.has(v)?s.delete(v):s.add(v); onFiltersChanged(); renderAll(); }
-function clearFilters(){ filterState={type:'any',moods:new Set(),genres:new Set(),spice:'any'}; onFiltersChanged(); renderAll(); }
+function clearFilters(){ filterState={type:'any',moods:new Set(),genres:new Set()}; onFiltersChanged(); renderAll(); }
 function heart(id){
   const it = library.find(i=>i.id===id); it.hearted=true; renderContent();
   setTimeout(()=>{ it.status='want'; saveLibrary(); renderAll(); }, 550);
@@ -700,15 +713,10 @@ async function pickResult(r){
   const gset = new Set([...(r.genre_ids||[]).map(id=>TMDB_GENRE[id]).filter(Boolean), ...e.genres]);
   document.querySelectorAll('#e-genres .chip').forEach(c=>{ if(gset.has(c.dataset.val)) c.classList.add('on'); });
   document.querySelectorAll('#e-moods .chip').forEach(c=>{ if(e.moods.includes(c.dataset.val)) c.classList.add('on'); });
-  // spice guess: age certification, nudged up if the keywords are steamy
-  const cert = await tmdbCert(r.type, r.tmdbId);
-  let guess = certToSpice(cert);
-  if(e.moods.includes('spicy')) guess = Math.max(guess||0, 2);
-  if(guess!==null){ modalSpice=guess; document.getElementById('e-spice').value=String(guess); }
 }
 
 /* ---------------- add / edit modal ---------------- */
-let editingId=null, modalRating=0, modalComfort=false, modalSpice=0, modalTmdbId=null, modalPoster=null, modalYear='';
+let editingId=null, modalRating=0, modalComfort=false, modalTmdbId=null, modalPoster=null, modalYear='';
 function renderStarPicker(){
   document.getElementById('e-stars').innerHTML = [1,2,3,4,5]
     .map(n=>`<button type="button" class="${n<=modalRating?'on':''}" onclick="setModalRating(${n})">★</button>`).join('');
@@ -732,8 +740,6 @@ function openEntry(id){
   document.getElementById('e-title').value = it ? it.title : '';
   document.getElementById('e-type').value = it ? it.type : 'show';
   document.getElementById('e-status').value = it ? (it.status==='rec'?'want':it.status) : 'watched';
-  modalSpice = it ? it.spice : 0;
-  document.getElementById('e-spice').value = String(modalSpice);
   modalRating = it ? it.rating : 0;
   modalComfort = it ? it.comfort : false;
   modalTmdbId = it ? it.tmdbId : null;
@@ -765,7 +771,6 @@ function saveEntry(){
   const data={
     title, type:document.getElementById('e-type').value, status,
     rating: status==='want'?0:modalRating, comfort:modalComfort,
-    spice:Number(document.getElementById('e-spice').value),
     genres: genres.length?genres:['other'], moods,
     tmdbId:modalTmdbId, poster:modalPoster, year:modalYear
   };
@@ -798,7 +803,7 @@ async function openDetail(tmdbId, type, libId){
   const runtime = d.runtime ? d.runtime+' min' : (d.number_of_seasons ? d.number_of_seasons+' season'+(d.number_of_seasons>1?'s':'') : '');
   const prov = ((d['watch/providers']&&d['watch/providers'].results&&d['watch/providers'].results.US&&d['watch/providers'].results.US.flatrate)||[]).map(x=>x.provider_name);
   const lib = libId!=null ? library.find(i=>i.id===libId) : null;
-  const mine = lib ? `<div class="detail-mine">Your take: ${lib.rating?starStr(lib.rating):'not rated'} ${lib.comfort?'⭐':''} ${lib.spice>0?chiliStr(lib.spice):''}</div>` : '';
+  const mine = lib ? `<div class="detail-mine">Your take: ${lib.rating?starStr(lib.rating):'not rated'} ${lib.comfort?'⭐':''}</div>` : '';
   body.innerHTML = `
     <div class="detail-head">
       <div class="detail-poster" style="background:${GRADS[tmdbId%GRADS.length]}">${d.poster_path?`<img src="${IMG+d.poster_path}" alt="">`:'🎬'}</div>
@@ -832,7 +837,7 @@ function rollSurprise(){
   res.innerHTML=`<div class="result-card">
     <div class="result-poster" style="background:${gradFor(pick)}">${pick.poster?`<img src="${pick.poster}" alt="">`:emojiFor(pick)}</div>
     <div class="result-title">${pick.title}</div>
-    <div class="result-meta">${pick.type==='movie'?'Movie':'Show'} · ${pick.genres.join(', ')}${pick.spice>0?' · '+chiliStr(pick.spice):''}</div>
+    <div class="result-meta">${pick.type==='movie'?'Movie':'Show'} · ${pick.genres.join(', ')}</div>
   </div>`;
 }
 
