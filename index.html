@@ -190,6 +190,7 @@
     font-size:13px; color:#fff; background:#032541; padding:6px 12px; border-radius:8px}
   .credits p{font-size:11.5px; margin:9px auto 0; max-width:340px; line-height:1.45}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="wrap">
@@ -220,14 +221,19 @@
 <!-- Login modal -->
 <div class="scrim" id="login-scrim">
   <div class="modal">
-    <h2>Welcome 💕</h2>
-    <p class="sub">Sign in to save your watchlist and sync it across your phone &amp; laptop.</p>
-    <button class="btn-google" onclick="loginSoon()">Continue with Google</button>
-    <div class="or">— or —</div>
-    <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@email.com" autocomplete="email"></div>
-    <button class="btn-primary" style="width:100%" onclick="loginSoon()">Email me a magic link ✨</button>
+    <div id="login-signedout">
+      <h2>Welcome 💕</h2>
+      <p class="sub">Sign in to save your watchlist and sync it across your phone &amp; laptop. No password — we'll email you a link.</p>
+      <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@email.com" autocomplete="email"></div>
+      <button class="btn-primary" style="width:100%" onclick="sendMagicLink()">Email me a magic link ✨</button>
+    </div>
+    <div id="login-signedin" style="display:none">
+      <h2>You're in 🎀</h2>
+      <p class="sub">Signed in as <b id="login-who"></b>. Everything you log saves &amp; syncs automatically.</p>
+      <button class="btn-primary" style="width:100%;background:var(--ink)" onclick="signOut()">Sign out</button>
+    </div>
     <p class="login-note" id="login-note"></p>
-    <div class="modal-actions"><button class="btn-ghost" style="flex:1" onclick="closeModal('login-scrim')">Maybe later</button></div>
+    <div class="modal-actions"><button class="btn-ghost" style="flex:1" onclick="closeModal('login-scrim')">Close</button></div>
   </div>
 </div>
 
@@ -438,7 +444,7 @@ let library = SEED;
 const SEED_VERSION = 2;
 
 /* ---- device persistence (safe if storage is blocked) ---- */
-function saveLibrary(){ try{ localStorage.setItem('mywatchlist', JSON.stringify(library)); }catch(e){} }
+function saveLibrary(){ if(cloudMode){ scheduleCloudSave(); return; } try{ localStorage.setItem('mywatchlist', JSON.stringify(library)); }catch(e){} }
 function loadLibrary(){
   try{
     const s = localStorage.getItem('mywatchlist');
@@ -488,6 +494,14 @@ function passesFilter(i){
   if(filterState.genres.size && ![...filterState.genres].some(g=>i.genres.includes(g))) return false;
   return true;
 }
+function recPasses(r){
+  if(filterState.type!=='any' && r.type!==filterState.type) return false;
+  if(filterState.spice!=='any' && (r.spice==null || r.spice!==Number(filterState.spice))) return false;
+  if(filterState.moods.size && !(r.moods||[]).some(m=>filterState.moods.has(m))) return false;
+  if(filterState.genres.size && !(r.genres||[]).some(g=>filterState.genres.has(g))) return false;
+  return true;
+}
+function filtersActive(){ return filterState.type!=='any'||filterState.spice!=='any'||filterState.moods.size>0||filterState.genres.size>0; }
 
 /* ---------------- render ---------------- */
 function renderNav(){
@@ -532,7 +546,7 @@ function cardHTML(i){
   </div>`;
 }
 function trendingHTML(){
-  if(currentPage!=='rec' || !trendingCache || !trendingCache.length) return '';
+  if(currentPage!=='rec' || filtersActive() || !trendingCache || !trendingCache.length) return '';
   const cards = trendingCache.map(t=>`
     <div class="trend-card" onclick='addFromTmdb(${JSON.stringify(t).replace(/'/g,"&#39;")})'>
       <div class="trend-poster" style="background:${GRADS[t.tmdbId%GRADS.length]}">${t.poster?`<img src="${t.poster}" alt="">`:'🎬'}<div class="trend-add">+</div></div>
@@ -552,18 +566,14 @@ function renderContent(){
   if(currentPage==='rec'){
     const refreshBox = `<div class="rec-refresh"><button onclick="refreshRecs()">🔄 Refresh your recommendations</button>${recsLoading?'<span class="rec-loading">finding picks…</span>':''}</div>`;
     let html = refreshBox + trendingHTML();
-    const mappable = new Set(Object.values(TMDB_GENRE));
-    const recGenres = [...filterState.genres].filter(g=>mappable.has(g)); // only real TMDB genres narrow discovery
-    const shownRecs = recs.filter(r=> (filterState.type==='any'||r.type===filterState.type) && (!recGenres.length || recGenres.some(g=>r.genres.includes(g))));
-    if(shownRecs.length){
-      html += `<div class="tiergroup"><div class="tierhead"><h3>✨ For you</h3><div class="rule"></div></div>
-        <div class="grid">${shownRecs.map(r=>recCardHTML(r)).join('')}</div></div>`;
-    }
-    const items = library.filter(i=>i.status==='rec' && !i.hidden && passesFilter(i));
-    if(items.length){
-      html += `<div class="tiergroup"><div class="tierhead"><h3>💡 Handpicked to get you started</h3><div class="rule"></div></div>
-        <div class="grid">${items.map(cardHTML).join('')}</div></div>`;
-    }
+    const dyn = recs.filter(recPasses);
+    const handp = library.filter(i=>i.status==='rec' && !i.hidden && passesFilter(i));
+    const combined = [...dyn, ...handp];
+    html += `<div class="tiergroup"><div class="tierhead"><h3>✨ Recommended for you</h3><div class="rule"></div></div>`;
+    html += combined.length
+      ? `<div class="grid">${combined.map(r=> r.status===undefined ? recCardHTML(r) : cardHTML(r)).join('')}</div>`
+      : `<div class="empty" style="padding:20px"><span>🌷</span>${recsLoading?'Finding picks for your taste…':'Nothing matches those filters — try fewer, or hit refresh.'}</div>`;
+    html += `</div>`;
     box.innerHTML = html;
     return;
   }
@@ -598,8 +608,23 @@ function heart(id){
 function hideItem(id){ const it=library.find(i=>i.id===id); it.hidden=true; saveLibrary(); renderAll(); }
 function unhide(id){ const it=library.find(i=>i.id===id); it.hidden=false; saveLibrary();
   if(currentPage==='hidden' && !library.some(i=>i.hidden)) currentPage='rec'; renderAll(); }
-function openLogin(){ document.getElementById('login-note').textContent=''; document.getElementById('login-scrim').classList.add('show'); }
-function loginSoon(){ document.getElementById('login-note').textContent = 'Sign-in switches on in the final wiring step — almost there! 🎀'; }
+function openLogin(){
+  document.getElementById('login-note').textContent='';
+  const inEl=document.getElementById('login-signedin'), outEl=document.getElementById('login-signedout');
+  if(user){ inEl.style.display='block'; outEl.style.display='none'; document.getElementById('login-who').textContent=user.email||'your account'; }
+  else { inEl.style.display='none'; outEl.style.display='block'; }
+  document.getElementById('login-scrim').classList.add('show');
+}
+async function sendMagicLink(){
+  const email=(document.getElementById('login-email').value||'').trim();
+  const note=document.getElementById('login-note');
+  if(!supa){ note.textContent='Sign-in service not loaded — check your connection and refresh.'; return; }
+  if(!email){ document.getElementById('login-email').focus(); return; }
+  note.textContent='Sending…';
+  const {error}=await supa.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin+location.pathname}});
+  note.textContent = error ? ('Hmm — '+error.message) : '✨ Check your email for your sign-in link!';
+}
+async function signOut(){ if(supa) await supa.auth.signOut(); closeModal('login-scrim'); }
 
 /* ---------------- TMDB search in modal ---------------- */
 let searchTimer=null;
@@ -631,14 +656,17 @@ async function pickResult(r){
   document.getElementById('e-type').value = r.type;
   document.getElementById('e-results').innerHTML = '';
   modalTmdbId = r.tmdbId; modalPoster = r.poster||null; modalYear = r.year||'';
-  // pre-select genre chips from TMDB genres
-  const mapped = (r.genre_ids||[]).map(id=>TMDB_GENRE[id]).filter(Boolean);
-  document.querySelectorAll('#e-genres .chip').forEach(c=>{
-    if(mapped.includes(c.dataset.val)) c.classList.add('on');
-  });
-  // spice guess: start from age certification, then nudge up if TMDB keywords are steamy
+  const media = r.type==='movie'?'movie':'tv';
+  // pull full details + keywords once, infer her vibe-genres + moods, and pre-select those chips
+  const d = await tmdbGet(`/${media}/${r.tmdbId}?append_to_response=keywords`);
+  const e = d ? enrichTags(d) : {genres:[], moods:[]};
+  const gset = new Set([...(r.genre_ids||[]).map(id=>TMDB_GENRE[id]).filter(Boolean), ...e.genres]);
+  document.querySelectorAll('#e-genres .chip').forEach(c=>{ if(gset.has(c.dataset.val)) c.classList.add('on'); });
+  document.querySelectorAll('#e-moods .chip').forEach(c=>{ if(e.moods.includes(c.dataset.val)) c.classList.add('on'); });
+  // spice guess: age certification, nudged up if the keywords are steamy
   const cert = await tmdbCert(r.type, r.tmdbId);
-  const guess = await tmdbSpiceBump(r.type, r.tmdbId, certToSpice(cert));
+  let guess = certToSpice(cert);
+  if(e.moods.includes('spicy')) guess = Math.max(guess||0, 2);
   if(guess!==null){ modalSpice=guess; document.getElementById('e-spice').value=String(guess); }
 }
 
@@ -770,51 +798,87 @@ async function checkNewSeasons(){
 const TAG_TO_TMDB = {};
 Object.entries(TMDB_GENRE).forEach(([id,tag])=>{ (TAG_TO_TMDB[tag]=TAG_TO_TMDB[tag]||[]).push(Number(id)); });
 let recs=[], recsLoading=false, recPage=1, dismissedRecs=[];
-function saveDismissed(){ try{ localStorage.setItem('mywatchlist_dismissed', JSON.stringify(dismissedRecs)); }catch(e){} }
+function saveDismissed(){ if(cloudMode){ scheduleCloudSave(); return; } try{ localStorage.setItem('mywatchlist_dismissed', JSON.stringify(dismissedRecs)); }catch(e){} }
 function loadDismissed(){ try{ const s=localStorage.getItem('mywatchlist_dismissed'); if(s) dismissedRecs=JSON.parse(s); }catch(e){} }
 
-/* builds a weighted picture of her taste from what she's rated */
+/* infers Sara's own genre/mood tags from a TMDB details+keywords payload */
+function enrichTags(d){
+  const genres=new Set(), moods=new Set();
+  const gids=(d.genres||[]).map(g=>g.id);
+  gids.forEach(id=>{ if(TMDB_GENRE[id]) genres.add(TMDB_GENRE[id]); });
+  const hasG=id=>gids.includes(id);
+  if(hasG(18)&&hasG(35)) genres.add('dramedy');
+  if(hasG(10764)) genres.add('reality');
+  if(hasG(18)) moods.add('dramatic');
+  if(hasG(35)){ moods.add('funny'); moods.add('feel-good'); }
+  if(hasG(10751)) moods.add('feel-good');
+  if(hasG(53)||hasG(9648)||hasG(80)) moods.add('edge-of-seat');
+  if(hasG(36)||hasG(99)) moods.add('inspiring');
+  const oc=d.origin_country||[]; if(oc.includes('KR')||d.original_language==='ko') genres.add('k-drama');
+  const kws=((d.keywords&&(d.keywords.keywords||d.keywords.results))||[]).map(k=>(k.name||'').toLowerCase());
+  const kw=(...a)=>kws.some(n=>a.some(x=>n.includes(x)));
+  if(kw('based on a true story','based on true','true story','biography','biopic')){ genres.add('true story'); moods.add('inspiring'); }
+  if(kw('period drama','costume drama','regency','victorian','19th century','18th century')) genres.add('period');
+  if(kw('high school','teenage','young adult','coming of age','coming-of-age')) genres.add('teen drama');
+  if(kw('coming of age','coming-of-age')) genres.add('coming-of-age');
+  if(kw('christmas','holiday season','santa','xmas')) genres.add('holiday');
+  if(kw('vampire','werewolf','witch','supernatural','ghost','zombie','paranormal')) genres.add('supernatural');
+  if(kw('hospital','doctor','nurse','surgeon','medical')) genres.add('medical');
+  if(kw('football','basketball','hockey','soccer','baseball','sports','athlete','olympics')) genres.add('sports');
+  if(kw('ballet','dance','dancer','dancing')) genres.add('dance');
+  if(kw('nudity','sex scene','erotic','steamy','sensuality','sexual content')) moods.add('spicy');
+  if(kw('nostalgia','1980s','1990s','1970s','2000s')) moods.add('nostalgic');
+  if(kw('heartwarming','wholesome','feel good','feel-good')) moods.add('feel-good');
+  if(kw('tearjerker','emotional','grief','loss')) moods.add('moving');
+  if(kw('small town','cozy','comfort','slow burn')) moods.add('cozy');
+  return {genres:[...genres], moods:[...moods]};
+}
+
+/* weighted picture of Sara's taste across ALL her tags (genres + moods) */
 function tasteProfile(){
-  const gW={}; const liked=[]; const excludeTitle=new Set(), excludeTmdb=new Set();
+  const tagW={}; const liked=[]; const excludeTitle=new Set(), excludeTmdb=new Set();
   for(const i of library){
     excludeTitle.add((i.title||'').toLowerCase()); if(i.tmdbId) excludeTmdb.add(i.tmdbId);
     if(i.status!=='watched' && i.status!=='watching') continue;
     const w = i.comfort?3 : i.rating>=5?2.2 : i.rating===4?1.3 : i.rating===3?0.3 : (i.rating>=1&&i.rating<=2?-1.2:0);
     if(!w) continue;
-    i.genres.forEach(g=>gW[g]=(gW[g]||0)+w);
+    (i.genres||[]).forEach(g=>tagW[g]=(tagW[g]||0)+w);
+    (i.moods||[]).forEach(m=>tagW[m]=(tagW[m]||0)+w*0.7);
     if(w>=1.3 && i.tmdbId) liked.push({id:i.tmdbId, type:i.type});
   }
-  const topTags = Object.entries(gW).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t])=>t);
+  const topTags=Object.entries(tagW).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t])=>t);
   const ids=[]; topTags.forEach(t=>(TAG_TO_TMDB[t]||[]).forEach(id=>{ if(!ids.includes(id)) ids.push(id); }));
-  return {topTmdbGenres:ids.slice(0,4), liked:liked.slice(0,6), excludeTitle, excludeTmdb};
+  return {tagW, topTmdbGenres:ids.slice(0,4), liked:liked.slice(0,6), excludeTitle, excludeTmdb};
 }
 
 async function buildRecs(page){
   recsLoading=true; if(currentPage==='rec') renderContent();
-  const p = tasteProfile(); const pool={};
+  const p=tasteProfile(); const pool={};
   const consider=(r, media, bonus)=>{
     if(!r) return; const title=r.title||r.name||''; if(!title) return;
     if(p.excludeTmdb.has(r.id) || p.excludeTitle.has(title.toLowerCase()) || dismissedRecs.includes(r.id)) return;
     const gids=r.genre_ids||[]; const overlap=gids.filter(id=>p.topTmdbGenres.includes(id)).length;
-    const score=(r.vote_average||0)*0.4 + overlap*1.6 + bonus + (r.popularity?Math.min(r.popularity/200,1):0);
-    if(!pool[r.id] || pool[r.id].score<score) pool[r.id]={score, obj:{tmdbId:r.id, title, type:media==='movie'?'movie':'show',
-      year:(r.release_date||r.first_air_date||'').slice(0,4), poster:r.poster_path?IMG+r.poster_path:'', genres:gids.map(id=>TMDB_GENRE[id]).filter(Boolean)}};
+    const base=(r.vote_average||0)*0.35 + overlap*1.1 + bonus + (r.popularity?Math.min(r.popularity/200,1):0);
+    if(!pool[r.id] || pool[r.id].base<base) pool[r.id]={base, media:media==='movie'?'movie':'tv', r};
   };
-  // 1) TMDB's own recommendations, seeded from her favourites (strong personal signal)
-  for(const f of p.liked){
-    const media = f.type==='movie'?'movie':'tv';
-    const d = await tmdbGet(`/${media}/${f.id}/recommendations?page=${page||1}`);
-    (d?.results||[]).forEach(r=>consider(r, media, 2.5));
+  for(const f of p.liked){ const media=f.type==='movie'?'movie':'tv'; const d=await tmdbGet(`/${media}/${f.id}/recommendations?page=${page||1}`); (d?.results||[]).forEach(r=>consider(r,media,2.5)); }
+  if(p.topTmdbGenres.length){ const g=p.topTmdbGenres.join('%7C');
+    const dm=await tmdbGet(`/discover/movie?with_genres=${g}&sort_by=popularity.desc&vote_count.gte=200&page=${page||1}`); (dm?.results||[]).forEach(r=>consider(r,'movie',0.5));
+    const dt=await tmdbGet(`/discover/tv?with_genres=${g}&sort_by=popularity.desc&vote_count.gte=100&page=${page||1}`); (dt?.results||[]).forEach(r=>consider(r,'tv',0.5)); }
+  // take strongest candidates, enrich each with full tags, then re-rank by her whole taste vector
+  const cands=Object.values(pool).sort((a,b)=>b.base-a.base).slice(0,22);
+  const out=[];
+  for(const c of cands){
+    const r=c.r, media=c.media;
+    const d=await tmdbGet(`/${media}/${r.id}?append_to_response=keywords`);
+    let genres=(r.genre_ids||[]).map(id=>TMDB_GENRE[id]).filter(Boolean), moods=[];
+    if(d){ const e=enrichTags(d); genres=[...new Set([...genres,...e.genres])]; moods=e.moods; }
+    const taste=[...genres,...moods].reduce((s,t)=>s+(p.tagW[t]||0),0);
+    out.push({score:c.base + taste*1.5, obj:{tmdbId:r.id, title:(r.title||r.name||''), type:media==='movie'?'movie':'show',
+      year:(r.release_date||r.first_air_date||'').slice(0,4), poster:r.poster_path?IMG+r.poster_path:'',
+      genres:genres.length?genres:['other'], moods, spice:moods.includes('spicy')?2:0}});
   }
-  // 2) discover more in her top genres (covers her even before she's logged much)
-  if(p.topTmdbGenres.length){
-    const g=p.topTmdbGenres.join('%7C');
-    const dm=await tmdbGet(`/discover/movie?with_genres=${g}&sort_by=popularity.desc&vote_count.gte=200&page=${page||1}`);
-    (dm?.results||[]).forEach(r=>consider(r,'movie',0.5));
-    const dt=await tmdbGet(`/discover/tv?with_genres=${g}&sort_by=popularity.desc&vote_count.gte=100&page=${page||1}`);
-    (dt?.results||[]).forEach(r=>consider(r,'tv',0.5));
-  }
-  recs=Object.values(pool).sort((a,b)=>b.score-a.score).slice(0,18).map(x=>x.obj);
+  recs=out.sort((a,b)=>b.score-a.score).slice(0,18).map(x=>x.obj);
   recsLoading=false; if(currentPage==='rec') renderContent();
 }
 function refreshRecs(){ recPage = recPage%3 + 1; buildRecs(recPage); }
@@ -886,11 +950,61 @@ function mergeSeeds(){
   if(added) saveLibrary();
 }
 
+/* ---------------- Supabase auth + cloud sync ---------------- */
+const SUPA_URL='https://gmipakdymphqmqkspofa.supabase.co';
+const SUPA_KEY='sb_publishable_JO1KW7yIrbGBMVieZO6FIw__pNhr9Oo';
+let supa=null, user=null, cloudMode=false, cloudSaveTimer=null;
+try{ if(window.supabase) supa=window.supabase.createClient(SUPA_URL,SUPA_KEY); }catch(e){}
+
+function updateAccountButton(){
+  const b=document.getElementById('account-btn'); if(!b) return;
+  b.textContent = user ? ('👋 '+((user.email||'you').split('@')[0])) : '☕ Sign in';
+}
+async function saveToCloud(){
+  if(!supa||!user) return;
+  try{ await supa.from('watchlists').upsert({user_id:user.id, library, dismissed:dismissedRecs, updated_at:new Date().toISOString()}); }
+  catch(e){ console.error('cloud save',e); }
+}
+function scheduleCloudSave(){ clearTimeout(cloudSaveTimer); cloudSaveTimer=setTimeout(saveToCloud, 600); }
+async function loadFromCloud(){
+  cloudMode=true;
+  let row=null;
+  try{ const {data}=await supa.from('watchlists').select('library,dismissed').eq('user_id',user.id).maybeSingle(); row=data; }
+  catch(e){ console.error('cloud load',e); }
+  library = (row && Array.isArray(row.library)) ? row.library : [];        // fresh account => empty
+  dismissedRecs = (row && Array.isArray(row.dismissed)) ? row.dismissed : [];
+  uid = library.reduce((m,i)=>Math.max(m,i.id||0),0);
+  migrate();
+  renderAll();
+  await backfillIds(); await checkNewSeasons(); await buildRecs(1);
+}
+function bootLocal(){                                                        // signed-out preview
+  cloudMode=false;
+  loadLibrary(); loadDismissed(); migrate(); mergeSeeds();
+  renderAll();
+  (async()=>{ await backfillIds(); await checkNewSeasons(); await buildRecs(1); })();
+}
+async function onAuth(sess){
+  const u=sess?.user||null;
+  const changed = (!!u!==!!user) || (u&&user&&u.id!==user.id);
+  user=u; updateAccountButton();
+  if(!changed) return;
+  if(user){ closeModal('login-scrim'); await loadFromCloud(); }
+  else { bootLocal(); }
+}
+async function initAuth(){
+  updateAccountButton();
+  loadTrending();
+  if(!supa){ bootLocal(); return; }
+  let sess=null;
+  try{ const {data}=await supa.auth.getSession(); sess=data.session; }catch(e){}
+  user=sess?.user||null; updateAccountButton();
+  supa.auth.onAuthStateChange((_e,s)=>onAuth(s));
+  if(user){ await loadFromCloud(); } else { bootLocal(); }
+}
+
 /* ---------------- boot ---------------- */
-loadLibrary(); loadDismissed(); migrate(); mergeSeeds();
-renderAll();
-loadTrending();
-(async()=>{ await backfillIds(); await checkNewSeasons(); await buildRecs(1); })();
+initAuth();
 </script>
 </body>
 </html>
