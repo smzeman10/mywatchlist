@@ -201,8 +201,6 @@
 
   <nav id="nav"></nav>
 
-  <div class="note">💾 Saves on this device. Sign-in sync across your phone &amp; laptop is the next step. Movie search &amp; posters go live once this is hosted online.</div>
-
   <div class="filters" id="filters"></div>
   <div id="content"></div>
 
@@ -486,8 +484,8 @@ function fmtMonth(d){ if(!d) return ''; const dt=new Date(d); return isNaN(dt)?'
 function passesFilter(i){
   if(filterState.type!=='any' && i.type!==filterState.type) return false;
   if(filterState.spice!=='any' && i.spice!==Number(filterState.spice)) return false;
-  if(filterState.moods.size && ![...filterState.moods].every(m=>i.moods.includes(m))) return false;
-  if(filterState.genres.size && ![...filterState.genres].every(g=>i.genres.includes(g))) return false;
+  if(filterState.moods.size && ![...filterState.moods].some(m=>i.moods.includes(m))) return false;
+  if(filterState.genres.size && ![...filterState.genres].some(g=>i.genres.includes(g))) return false;
   return true;
 }
 
@@ -554,7 +552,9 @@ function renderContent(){
   if(currentPage==='rec'){
     const refreshBox = `<div class="rec-refresh"><button onclick="refreshRecs()">🔄 Refresh your recommendations</button>${recsLoading?'<span class="rec-loading">finding picks…</span>':''}</div>`;
     let html = refreshBox + trendingHTML();
-    const shownRecs = recs.filter(r=> (filterState.type==='any'||r.type===filterState.type) && (!filterState.genres.size || [...filterState.genres].every(g=>r.genres.includes(g))));
+    const mappable = new Set(Object.values(TMDB_GENRE));
+    const recGenres = [...filterState.genres].filter(g=>mappable.has(g)); // only real TMDB genres narrow discovery
+    const shownRecs = recs.filter(r=> (filterState.type==='any'||r.type===filterState.type) && (!recGenres.length || recGenres.some(g=>r.genres.includes(g))));
     if(shownRecs.length){
       html += `<div class="tiergroup"><div class="tierhead"><h3>✨ For you</h3><div class="rule"></div></div>
         <div class="grid">${shownRecs.map(r=>recCardHTML(r)).join('')}</div></div>`;
@@ -852,7 +852,7 @@ function dismissRec(idx){
 
 /* fills in TMDB ids + posters for your starter faves so recs/posters/season-alerts work from day one */
 async function backfillIds(){
-  const need = library.filter(i=>!i.tmdbId && !i.noMatch && (i.status==='watched'||i.status==='watching') && (i.comfort||i.rating>=4));
+  const need = library.filter(i=>!i.tmdbId && !i.noMatch); // every title without an id -> fetch its poster + id
   let changed=false;
   for(const it of need){
     const d = await tmdbGet(`/search/${it.type==='movie'?'movie':'tv'}?query=${encodeURIComponent(it.title)}`);
