@@ -587,8 +587,8 @@ function cardHTML(i){
   if(i.hidden) btn = `<button class="act-btn edit-btn" onclick="unhide(${i.id})">↩︎ Bring back</button>`;
   else if(alert) btn = `<button class="act-btn log-btn" onclick="caughtUp(${i.id})">✓ I watched the new season</button>`;
   else if(i.status==='rec') btn = `<button class="act-btn heart-btn ${i.hearted?'done':''}" onclick="heart(${i.id})">${i.hearted?'♥ Added':'♡ Want to watch'}</button><button class="not-btn" onclick="hideItem(${i.id})">🙈 Not interested</button>`;
-  else if(i.status==='want') btn = `<button class="act-btn log-btn" onclick="openEntry(${i.id})">✓ Log &amp; rate</button>`;
-  else btn = `<button class="act-btn edit-btn" onclick="openEntry(${i.id})">✏️ Edit</button>`;
+  else if(i.status==='want') btn = `<button class="act-btn log-btn" onclick="openEntry(${i.id})">✓ Log &amp; rate</button><button class="not-btn" onclick="removeItem(${i.id})">🗑️ Remove</button>`;
+  else btn = `<button class="act-btn edit-btn" onclick="openEntry(${i.id})">✏️ Edit</button><button class="not-btn" onclick="removeItem(${i.id})">🗑️ Remove</button>`;
   const comfortBadge = i.comfort ? `<div class="comfort-badge">⭐</div>` : '';
   const seasonBadge = alert ? `<div class="season-badge">🔔 New season</div>` : '';
   const stars = i.rating ? `<div class="stars">${starStr(i.rating)}</div>` : '';
@@ -676,6 +676,12 @@ function heart(id){
 function hideItem(id){ const it=library.find(i=>i.id===id); it.hidden=true; saveLibrary(); renderAll(); }
 function unhide(id){ const it=library.find(i=>i.id===id); it.hidden=false; saveLibrary();
   if(currentPage==='hidden' && !library.some(i=>i.hidden)) currentPage='rec'; renderAll(); }
+function removeItem(id){
+  const it = library.find(i=>i.id===id); if(!it) return;
+  if(!confirm(`Remove "${it.title}" from your lists? This can't be undone.`)) return;
+  library = library.filter(i=>i.id!==id);
+  saveLibrary(); renderAll();
+}
 function openLogin(){
   document.getElementById('login-note').textContent='';
   const inEl=document.getElementById('login-signedin'), outEl=document.getElementById('login-signedout');
@@ -841,21 +847,38 @@ async function openDetail(tmdbId, type, libId){
     ${prov.length?`<div class="detail-row"><b>Where to watch (US):</b> ${prov.join(', ')}</div><div class="detail-jw">Streaming availability from JustWatch</div>`:`<div class="detail-row" style="color:var(--muted)">Streaming info not listed</div>`}
   `;
 }
+/* weighted picker: heavier weights are picked more often, but still random */
+function weightedPick(items, weightFn){
+  const weights = items.map(weightFn);
+  const total = weights.reduce((a,b)=>a+b,0);
+  if(total<=0) return items[Math.floor(Math.random()*items.length)];
+  let r = Math.random()*total;
+  for(let i=0;i<items.length;i++){ r-=weights[i]; if(r<=0) return items[i]; }
+  return items[items.length-1];
+}
+/* rewatch weighting: comfort rewatches + 5★ weighted highest, 4★ next, 3★ least (but still in the mix). 1★/2★ never included. */
+function rewatchWeight(i){
+  if(i.rating===1 || i.rating===2) return 0;
+  let w = i.rating===5 ? 5 : i.rating===4 ? 3 : i.rating===3 ? 1 : 0;
+  if(i.comfort) w = Math.max(w, 4);
+  return w;
+}
 function rollSurprise(){
   const type=document.getElementById('surprise-type').value;
   const ok = i => !i.hidden && (type==='any' || i.type===type);
-  let pool;
+  let pool, weightFn=null;
   if(surpriseMode==='new'){
     const wants = library.filter(i=>ok(i) && i.status==='want');
     pool = wants.length ? wants : library.filter(i=>ok(i) && i.status==='rec');
   } else if(surpriseMode==='rewatch'){
-    pool = library.filter(i=>ok(i) && i.status==='watched' && (i.comfort||i.rating>=5));
+    pool = library.filter(i=>ok(i) && i.status==='watched' && rewatchWeight(i)>0);
+    weightFn = rewatchWeight;
   } else {
-    pool = library.filter(i=>ok(i));
+    pool = library.filter(i=>ok(i) && (i.status!=='watched' || rewatchWeight(i)>0));
   }
   const res=document.getElementById('surprise-result');
   if(!pool.length){ res.innerHTML=`<div class="empty" style="padding:20px 0"><span>🫧</span>Nothing matches — loosen it up!</div>`; return; }
-  const pick=pool[Math.floor(Math.random()*pool.length)];
+  const pick = weightFn ? weightedPick(pool, weightFn) : pool[Math.floor(Math.random()*pool.length)];
   res.innerHTML=`<div class="result-card">
     <div class="result-poster" style="background:${gradFor(pick)}">${pick.poster?`<img src="${pick.poster}" alt="">`:emojiFor(pick)}</div>
     <div class="result-title">${pick.title}</div>
