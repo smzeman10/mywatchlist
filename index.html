@@ -533,6 +533,48 @@ function gradFor(i){ return GRADS[((i.title?.length||0) + i.id) % GRADS.length];
 function emojiFor(i){ return GENRE_EMOJI[i.genres[0]] || '🎬'; }
 function chiliStr(n){ return n>0 ? '🌶'.repeat(n) : ''; }
 function starStr(n){ if(!n) return ''; return '★'.repeat(n) + `<span class="empty">${'★'.repeat(5-n)}</span>`; }
+function sortByRankThenAlpha(arr){ return [...arr].sort((a,b)=> (b.rating||0)-(a.rating||0) || a.title.localeCompare(b.title)); }
+/* finds an existing library item that's "the same title" so we never create a duplicate when moving lists */
+function findDupe(data){
+  return library.find(i => data.tmdbId ? i.tmdbId===data.tmdbId
+    : (i.type===data.type && (i.title||'').trim().toLowerCase()===(data.title||'').trim().toLowerCase()));
+}
+/* merges any existing duplicate entries (same tmdbId, or same title+type) into one record */
+function dedupeLibrary(){
+  const priority = {watched:4, watching:3, want:2, rec:1};
+  const groups = new Map();
+  for(const i of library){
+    const key = i.tmdbId ? 'id:'+i.tmdbId : 'title:'+i.type+':'+(i.title||'').trim().toLowerCase();
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(i);
+  }
+  let changed=false; const keep=[];
+  for(const [,items] of groups){
+    if(items.length===1){ keep.push(items[0]); continue; }
+    changed=true;
+    items.sort((a,b)=> (priority[b.status]||0)-(priority[a.status]||0) || (b.rating||0)-(a.rating||0) || ((b.tmdbId?1:0)-(a.tmdbId?1:0)) || (a.id-b.id));
+    const primary = items[0];
+    const genres=new Set(primary.genres||[]), moods=new Set(primary.moods||[]);
+    let comfort=primary.comfort, hidden=primary.hidden, hearted=primary.hearted;
+    for(const other of items.slice(1)){
+      (other.genres||[]).forEach(g=>genres.add(g));
+      (other.moods||[]).forEach(m=>moods.add(m));
+      comfort = comfort || other.comfort;
+      hidden = hidden && other.hidden;
+      hearted = hearted || other.hearted;
+      if(!primary.tmdbId && other.tmdbId) primary.tmdbId = other.tmdbId;
+      if(!primary.poster && other.poster) primary.poster = other.poster;
+      if(!primary.year && other.year) primary.year = other.year;
+      if(!primary.newSeasonAir && other.newSeasonAir) primary.newSeasonAir = other.newSeasonAir;
+    }
+    primary.genres = genres.size ? [...genres] : ['other'];
+    primary.moods = [...moods];
+    primary.comfort = comfort; primary.hidden = hidden; primary.hearted = hearted;
+    keep.push(primary);
+  }
+  if(changed){ library = keep; saveLibrary(); }
+  return changed;
+}
 function pageOf(i){ return PAGES.find(p=>p.statuses.includes(i.status)).id; }
 function allMoods(){ return [...new Set(library.flatMap(i=>i.moods))].sort(); }
 function allGenres(){ return [...new Set(library.flatMap(i=>i.genres))].sort(); }
@@ -587,8 +629,8 @@ function cardHTML(i){
   if(i.hidden) btn = `<button class="act-btn edit-btn" onclick="unhide(${i.id})">↩︎ Bring back</button>`;
   else if(alert) btn = `<button class="act-btn log-btn" onclick="caughtUp(${i.id})">✓ I watched the new season</button>`;
   else if(i.status==='rec') btn = `<button class="act-btn heart-btn ${i.hearted?'done':''}" onclick="heart(${i.id})">${i.hearted?'♥ Added':'♡ Want to watch'}</button><button class="not-btn" onclick="hideItem(${i.id})">🙈 Not interested</button>`;
-  else if(i.status==='want') btn = `<button class="act-btn log-btn" onclick="openEntry(${i.id})">✓ Log &amp; rate</button><button class="not-btn" onclick="removeItem(${i.id})">🗑️ Remove</button>`;
-  else btn = `<button class="act-btn edit-btn" onclick="openEntry(${i.id})">✏️ Edit</button><button class="not-btn" onclick="removeItem(${i.id})">🗑️ Remove</button>`;
+  else if(i.status==='want') btn = `<button class="act-btn log-btn" onclick="openEntry(${i.id})">✓ Log &amp; rate</button>`;
+  else btn = `<button class="act-btn edit-btn" onclick="openEntry(${i.id})">✏️ Edit</button>`;
   const comfortBadge = i.comfort ? `<div class="comfort-badge">⭐</div>` : '';
   const seasonBadge = alert ? `<div class="season-badge">🔔 New season</div>` : '';
   const stars = i.rating ? `<div class="stars">${starStr(i.rating)}</div>` : '';
@@ -617,7 +659,7 @@ function trendingHTML(){
 function renderContent(){
   const box = document.getElementById('content');
   if(currentPage==='hidden'){
-    const hitems = library.filter(i=>i.hidden && passesFilter(i));
+    const hitems = sortByRankThenAlpha(library.filter(i=>i.hidden && passesFilter(i)));
     box.innerHTML = `<div class="tiergroup"><div class="tierhead"><h3>🙈 Not interested</h3><div class="rule"></div></div>`
       + (hitems.length ? `<div class="grid">${hitems.map(cardHTML).join('')}</div>`
         : `<div class="empty"><span>🌸</span>Nothing hidden right now.</div>`) + `</div>`;
@@ -650,13 +692,13 @@ function renderContent(){
   let html='';
   if(currentPage==='watched'){
     html += GROUPS.map(g=>{
-      const inGroup = items.filter(g.test).sort((a,b)=>b.rating-a.rating || a.title.localeCompare(b.title));
+      const inGroup = sortByRankThenAlpha(items.filter(g.test));
       if(!inGroup.length) return '';
       return `<div class="tiergroup"><div class="tierhead"><h3>${g.label}</h3><div class="rule"></div></div>
         <div class="grid">${inGroup.map(cardHTML).join('')}</div></div>`;
     }).join('');
   } else {
-    html += `<div class="grid">${items.map(cardHTML).join('')}</div>`;
+    html += `<div class="grid">${sortByRankThenAlpha(items).map(cardHTML).join('')}</div>`;
   }
   box.innerHTML = html;
 }
@@ -676,12 +718,6 @@ function heart(id){
 function hideItem(id){ const it=library.find(i=>i.id===id); it.hidden=true; saveLibrary(); renderAll(); }
 function unhide(id){ const it=library.find(i=>i.id===id); it.hidden=false; saveLibrary();
   if(currentPage==='hidden' && !library.some(i=>i.hidden)) currentPage='rec'; renderAll(); }
-function removeItem(id){
-  const it = library.find(i=>i.id===id); if(!it) return;
-  if(!confirm(`Remove "${it.title}" from your lists? This can't be undone.`)) return;
-  library = library.filter(i=>i.id!==id);
-  saveLibrary(); renderAll();
-}
 function openLogin(){
   document.getElementById('login-note').textContent='';
   const inEl=document.getElementById('login-signedin'), outEl=document.getElementById('login-signedout');
@@ -689,13 +725,17 @@ function openLogin(){
   else { inEl.style.display='none'; outEl.style.display='block'; }
   document.getElementById('login-scrim').classList.add('show');
 }
+const SITE_URL = 'https://smzeman10.github.io/mywatchlist/';
 async function sendMagicLink(){
   const email=(document.getElementById('login-email').value||'').trim();
   const note=document.getElementById('login-note');
   if(!supa){ note.textContent='Sign-in service not loaded — check your connection and refresh.'; return; }
   if(!email){ document.getElementById('login-email').focus(); return; }
   note.textContent='Sending…';
-  const {error}=await supa.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin+location.pathname}});
+  // Always point the link at the real published URL (not whatever origin/pathname happens
+  // to be when testing locally) so it matches what's allow-listed in Supabase exactly.
+  const redirectTo = location.protocol==='http:'||location.protocol==='https:' ? SITE_URL : location.href;
+  const {error}=await supa.auth.signInWithOtp({email, options:{emailRedirectTo: redirectTo}});
   note.textContent = error ? ('Hmm — '+error.message) : '✨ Check your email for your sign-in link!';
 }
 async function signOut(){ if(supa) await supa.auth.signOut(); closeModal('login-scrim'); }
@@ -799,7 +839,11 @@ function saveEntry(){
     tmdbId:modalTmdbId, poster:modalPoster, year:modalYear
   };
   if(editingId!=null){ Object.assign(library.find(i=>i.id===editingId), data); }
-  else { library.push(mk(data)); }
+  else {
+    const dupe = findDupe(data);
+    if(dupe){ Object.assign(dupe, data, {hidden:false}); }
+    else { library.push(mk(data)); }
+  }
   saveLibrary();
   closeModal('entry-scrim'); renderAll();
 }
@@ -847,38 +891,21 @@ async function openDetail(tmdbId, type, libId){
     ${prov.length?`<div class="detail-row"><b>Where to watch (US):</b> ${prov.join(', ')}</div><div class="detail-jw">Streaming availability from JustWatch</div>`:`<div class="detail-row" style="color:var(--muted)">Streaming info not listed</div>`}
   `;
 }
-/* weighted picker: heavier weights are picked more often, but still random */
-function weightedPick(items, weightFn){
-  const weights = items.map(weightFn);
-  const total = weights.reduce((a,b)=>a+b,0);
-  if(total<=0) return items[Math.floor(Math.random()*items.length)];
-  let r = Math.random()*total;
-  for(let i=0;i<items.length;i++){ r-=weights[i]; if(r<=0) return items[i]; }
-  return items[items.length-1];
-}
-/* rewatch weighting: comfort rewatches + 5★ weighted highest, 4★ next, 3★ least (but still in the mix). 1★/2★ never included. */
-function rewatchWeight(i){
-  if(i.rating===1 || i.rating===2) return 0;
-  let w = i.rating===5 ? 5 : i.rating===4 ? 3 : i.rating===3 ? 1 : 0;
-  if(i.comfort) w = Math.max(w, 4);
-  return w;
-}
 function rollSurprise(){
   const type=document.getElementById('surprise-type').value;
   const ok = i => !i.hidden && (type==='any' || i.type===type);
-  let pool, weightFn=null;
+  let pool;
   if(surpriseMode==='new'){
     const wants = library.filter(i=>ok(i) && i.status==='want');
     pool = wants.length ? wants : library.filter(i=>ok(i) && i.status==='rec');
   } else if(surpriseMode==='rewatch'){
-    pool = library.filter(i=>ok(i) && i.status==='watched' && rewatchWeight(i)>0);
-    weightFn = rewatchWeight;
+    pool = library.filter(i=>ok(i) && i.status==='watched' && (i.comfort||i.rating>=5));
   } else {
-    pool = library.filter(i=>ok(i) && (i.status!=='watched' || rewatchWeight(i)>0));
+    pool = library.filter(i=>ok(i));
   }
   const res=document.getElementById('surprise-result');
   if(!pool.length){ res.innerHTML=`<div class="empty" style="padding:20px 0"><span>🫧</span>Nothing matches — loosen it up!</div>`; return; }
-  const pick = weightFn ? weightedPick(pool, weightFn) : pool[Math.floor(Math.random()*pool.length)];
+  const pick=pool[Math.floor(Math.random()*pool.length)];
   res.innerHTML=`<div class="result-card">
     <div class="result-poster" style="background:${gradFor(pick)}">${pick.poster?`<img src="${pick.poster}" alt="">`:emojiFor(pick)}</div>
     <div class="result-title">${pick.title}</div>
@@ -1123,16 +1150,19 @@ function recCardHTML(r){
 function findRec(tmdbId){ return recs.find(x=>x.tmdbId===tmdbId) || filterRecs.find(x=>x.tmdbId===tmdbId); }
 function heartRec(tmdbId){
   const r=findRec(tmdbId); if(!r) return;
-  library.push(mk({title:r.title, type:r.type, status:'want', rating:0, comfort:false, spice:r.spice||0,
-    genres:(r.genres&&r.genres.length)?r.genres:['other'], moods:r.moods||[], tmdbId:r.tmdbId, poster:r.poster||null, year:r.year||''}));
+  const data={title:r.title, type:r.type, status:'want', rating:0, comfort:false, spice:r.spice||0,
+    genres:(r.genres&&r.genres.length)?r.genres:['other'], moods:r.moods||[], tmdbId:r.tmdbId, poster:r.poster||null, year:r.year||''};
+  const dupe=findDupe(data);
+  if(dupe){ Object.assign(dupe, data, {hidden:false}); } else { library.push(mk(data)); }
   recs=recs.filter(x=>x.tmdbId!==tmdbId); filterRecs=filterRecs.filter(x=>x.tmdbId!==tmdbId);
   saveLibrary(); renderAll();
 }
 function watchedRec(tmdbId){
   const r=findRec(tmdbId); if(!r) return;
-  const item=mk({title:r.title, type:r.type, status:'watched', rating:0, comfort:false, spice:r.spice||0,
-    genres:(r.genres&&r.genres.length)?r.genres:['other'], moods:r.moods||[], tmdbId:r.tmdbId, poster:r.poster||null, year:r.year||''});
-  library.push(item);
+  const data={title:r.title, type:r.type, status:'watched', rating:0, comfort:false, spice:r.spice||0,
+    genres:(r.genres&&r.genres.length)?r.genres:['other'], moods:r.moods||[], tmdbId:r.tmdbId, poster:r.poster||null, year:r.year||''};
+  let item=findDupe(data);
+  if(item){ Object.assign(item, data, {hidden:false}); } else { item=mk(data); library.push(item); }
   recs=recs.filter(x=>x.tmdbId!==tmdbId); filterRecs=filterRecs.filter(x=>x.tmdbId!==tmdbId);
   saveLibrary();
   openEntry(item.id); // jump straight to rating it
@@ -1203,13 +1233,13 @@ async function loadFromCloud(){
   library = (row && Array.isArray(row.library)) ? row.library : [];        // fresh account => empty
   dismissedRecs = (row && Array.isArray(row.dismissed)) ? row.dismissed : [];
   uid = library.reduce((m,i)=>Math.max(m,i.id||0),0);
-  migrate();
+  migrate(); dedupeLibrary();
   renderAll();
   await backfillIds(); await checkNewSeasons(); await buildRecs();
 }
 function bootLocal(){                                                        // signed-out preview
   cloudMode=false;
-  loadLibrary(); loadDismissed(); migrate(); mergeSeeds();
+  loadLibrary(); loadDismissed(); migrate(); mergeSeeds(); dedupeLibrary();
   renderAll();
   (async()=>{ await backfillIds(); await checkNewSeasons(); await buildRecs(); })();
 }
