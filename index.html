@@ -7,13 +7,13 @@
 <meta name="description" content="My cozy little archive of everything worth watching.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://smzeman10.github.io/mywatchlist/">
-<meta property="og:title" content="My Watchlist 💕">
+<meta property="og:title" content="My Watchlist 🍂">
 <meta property="og:description" content="My cozy little archive of everything worth watching.">
 <meta property="og:image" content="https://smzeman10.github.io/mywatchlist/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="My Watchlist 💕">
+<meta name="twitter:title" content="My Watchlist 🍂">
 <meta name="twitter:description" content="My cozy little archive of everything worth watching.">
 <meta name="twitter:image" content="https://smzeman10.github.io/mywatchlist/preview.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,12 +21,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500;1,9..144,600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --blush:#FBEEF1; --cream:#FFFCF8; --ink:#46293A; --muted:#9C7A88;
-    --cherry:#E15C82; --cherry-soft:#F7D3DE; --gold:#F0B429; --gold-soft:#FFF3D6;
-    --line:#F3DDE4; --shadow:0 10px 30px -12px rgba(160,70,100,.28);
+    /* 🍂 fall palette: oat, cream, cocoa, pumpkin, honey */
+    --blush:#FAF0E2; --cream:#FFFAF3; --ink:#4B2E21; --muted:#9C7B65;
+    --cherry:#CC6A26; --cherry-soft:#F6DCC3; --gold:#E0A43A; --gold-soft:#FCEFD3;
+    --line:#EEDCC8; --shadow:0 10px 30px -12px rgba(140,80,35,.28);
+    --sage:#8E9B6A; --empty-star:#EAD8C4;
   }
   *{box-sizing:border-box}
-  body{margin:0; background:var(--blush); color:var(--ink);
+  body{margin:0; background-color:var(--blush); color:var(--ink);
+    background-image:radial-gradient(rgba(204,106,38,.08) 1.6px, transparent 1.8px); background-size:24px 24px;
     font-family:'Nunito',sans-serif; -webkit-font-smoothing:antialiased;}
   .wrap{max-width:1000px; margin:0 auto; padding:0 18px 120px; position:relative}
   .account{position:absolute; top:16px; right:0; border:1.5px solid var(--line); background:#fff;
@@ -50,9 +53,10 @@
   .rec-loading{font-size:12px; color:var(--muted); font-weight:700}
 
   header{padding:26px 0 8px; text-align:center}
+  .garland{font-size:15px; letter-spacing:6px; margin-bottom:4px; opacity:.9}
   .logo{font-family:'Fraunces',serif; font-style:italic; font-weight:600;
     font-size:clamp(30px,6vw,44px); letter-spacing:-.5px}
-  .logo .heart{font-style:normal; color:var(--cherry)}
+  .logo .heart{font-style:normal; color:var(--cherry); display:inline-block; transform:rotate(-8deg)}
   .tagline{color:var(--muted); font-size:14px; margin-top:2px}
 
   nav{display:flex; gap:6px; justify-content:center; margin:0; padding:12px 0 9px; flex-wrap:wrap;
@@ -63,39 +67,63 @@
   .tab:hover{color:var(--ink)}
   .tab.active{background:var(--ink); color:#fff}
 
-  .filters{background:var(--cream); border:1px solid var(--line); border-radius:20px;
-    padding:14px 16px; margin:18px 0 22px; box-shadow:var(--shadow)}
-  .frow{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:7px 0}
-  .flabel{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.6px;
-    color:var(--muted); min-width:54px}
+  .filters{background:var(--cream); border:1px solid var(--line); border-radius:22px;
+    padding:12px; margin:16px 0 22px; box-shadow:var(--shadow)}
+  .ftop{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .seg-group{display:inline-flex; background:var(--blush); border-radius:999px; padding:3px; gap:2px}
+  .seg-btn{border:none; background:transparent; cursor:pointer; font-family:inherit; font-weight:800;
+    font-size:13px; color:var(--muted); padding:7px 14px; border-radius:999px; transition:.15s; white-space:nowrap}
+  .seg-btn:hover{color:var(--ink)}
+  .seg-btn.on{background:#fff; color:var(--ink); box-shadow:0 2px 8px -2px rgba(120,70,30,.3)}
+  .drops{display:flex; gap:8px}
+  .drop-btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1.5px solid var(--line);
+    background:#fff; cursor:pointer; font-family:inherit; font-weight:800; font-size:13px; color:var(--ink);
+    padding:7px 13px; border-radius:999px; transition:.15s; white-space:nowrap}
+  .drop-btn:hover{border-color:var(--cherry)}
+  .drop-btn.has{border-color:var(--cherry); color:var(--cherry)}
+  .drop-btn.open{background:var(--ink); border-color:var(--ink); color:#fff}
+  .drop-btn .caret{font-size:10px; transition:transform .15s}
+  .drop-btn.open .caret{transform:rotate(180deg)}
+  .fcount{background:var(--cherry); color:#fff; border-radius:999px; padding:1px 7px; font-size:10.5px}
+  .drop-btn.open .fcount{background:var(--gold); color:var(--ink)}
   .chip{border:1.5px solid var(--line); background:#fff; cursor:pointer; font-family:inherit;
     font-weight:700; font-size:12.5px; color:var(--ink); padding:5px 12px; border-radius:999px; transition:.15s}
   .chip:hover{border-color:var(--cherry)}
   .chip.on{background:var(--cherry); border-color:var(--cherry); color:#fff}
   .chip.on.spice{background:var(--gold); border-color:var(--gold); color:var(--ink)}
   .clear{margin-left:auto; font-size:12px; color:var(--cherry); background:none; border:none;
-    cursor:pointer; font-weight:800; font-family:inherit}
-  .filters details{margin:7px 0}
-  .filters summary{display:flex; align-items:center; gap:7px; cursor:pointer; font-size:11px; font-weight:800;
-    text-transform:uppercase; letter-spacing:.6px; color:var(--muted); list-style:none; padding:4px 0}
-  .filters summary::-webkit-details-marker{display:none}
-  .filters summary::before{content:'▸'; font-size:10px; display:inline-block; transition:transform .15s}
-  .filters details[open] summary::before{transform:rotate(90deg)}
-  .filters summary .fcount{background:var(--cherry); color:#fff; border-radius:999px; padding:1px 7px; font-size:10px}
-  .filters details .frow{margin-top:8px}
+    cursor:pointer; font-weight:800; font-family:inherit; text-decoration:underline; text-underline-offset:3px}
+  .fpanel{margin-top:12px; background:var(--blush); border-radius:16px; padding:12px; animation:pop .2s ease}
+  .fpanel-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    margin-bottom:10px; font-family:'Fraunces',serif; font-style:italic; font-weight:600; font-size:15px}
+  .match{display:flex; align-items:center; gap:4px; font-family:'Nunito',sans-serif; font-style:normal;
+    font-size:11.5px; color:var(--muted); font-weight:700}
+  .mini{border:1.5px solid var(--line); background:#fff; cursor:pointer; font-family:inherit; font-weight:800;
+    font-size:11.5px; color:var(--muted); padding:3px 10px; border-radius:999px}
+  .mini.on{background:var(--ink); border-color:var(--ink); color:#fff}
+  .chiprow{display:flex; flex-wrap:wrap; gap:7px}
+  .picked{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:10px}
+  .picked-chip{border:none; background:var(--cherry-soft); color:#8A4515; cursor:pointer; font-family:inherit;
+    font-weight:800; font-size:12px; padding:5px 10px; border-radius:999px}
+  .picked-chip:hover{background:var(--cherry); color:#fff}
+  .picked-chip span{opacity:.6; margin-left:2px}
+  .picked-mode{border:none; background:none; cursor:pointer; font-family:inherit; font-weight:700;
+    font-size:11.5px; color:var(--muted); text-decoration:underline dotted; text-underline-offset:3px}
+  .hidden-row{display:flex; justify-content:flex-end; margin-top:8px}
 
   .list{display:flex; flex-direction:column; gap:8px}
   .list-row{display:flex; align-items:center; justify-content:space-between; gap:12px;
     background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:10px 14px;
     box-shadow:var(--shadow)}
-  .list-row .lr-main{display:flex; align-items:center; gap:9px; min-width:0; flex:1}
-  .lr-title{font-weight:800; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .lr-stars{color:var(--gold); font-size:13px; letter-spacing:1px; flex-shrink:0}
-  .lr-stars .empty{color:#E7D3DA}
-  .lr-unrated{font-size:11.5px; color:var(--muted); flex-shrink:0}
-  .lr-comfort{flex-shrink:0}
-  .lr-alert{font-size:11px; color:var(--cherry); font-weight:800; flex-shrink:0; white-space:nowrap}
-  .list-row .act-btn{margin-top:0; padding:7px 12px; white-space:nowrap; flex-shrink:0}
+  .list-row .lr-main{display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-width:0; flex:1}
+  .lr-title{font-weight:800; font-size:14.5px; line-height:1.25; overflow-wrap:anywhere}
+  .lr-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .lr-stars{color:var(--gold); font-size:13px; letter-spacing:1px}
+  .lr-stars .empty{color:var(--empty-star)}
+  .lr-unrated{font-size:11.5px; color:var(--muted)}
+  .lr-alert{font-size:11.5px; color:var(--cherry); font-weight:800}
+  .list-row.is-alert{border-color:var(--cherry-soft); background:#fff}
+  .list-row .act-btn{margin-top:0; padding:7px 12px; white-space:nowrap}
   .list-row .lr-actions{display:flex; gap:6px; flex-shrink:0}
 
   .trending{margin:0 0 26px}
@@ -125,14 +153,14 @@
   .comfort-badge{position:absolute; top:8px; left:8px; background:var(--gold-soft);
     border:1px solid var(--gold); border-radius:999px; padding:2px 8px; font-size:12px; z-index:2;
     box-shadow:0 2px 6px rgba(0,0,0,.08)}
-  .type-tag{position:absolute; top:8px; right:8px; background:rgba(70,41,58,.82); color:#fff;
+  .type-tag{position:absolute; top:8px; right:8px; background:rgba(75,46,33,.82); color:#fff;
     border-radius:999px; padding:3px 8px; font-size:10px; font-weight:800; z-index:2}
   .season-badge{position:absolute; left:0; right:0; bottom:0; background:var(--cherry); color:#fff;
     font-size:10.5px; font-weight:800; padding:4px 6px; text-align:center; z-index:2}
   .cbody{padding:10px 12px 12px; flex:1; display:flex; flex-direction:column; gap:5px}
   .ctitle{font-weight:800; font-size:14px; line-height:1.2}
   .stars{color:var(--gold); font-size:13px; letter-spacing:1px}
-  .stars .empty{color:#E7D3DA}
+  .stars .empty{color:var(--empty-star)}
   .cmeta{font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;
     flex-wrap:wrap; margin-top:auto}
   .chili{color:#D8563F; letter-spacing:1px}
@@ -141,7 +169,7 @@
   .heart-btn{background:var(--cherry-soft); color:var(--cherry)}
   .heart-btn:hover{background:var(--cherry); color:#fff}
   .heart-btn.done{background:#fff; color:var(--muted); border:1px solid var(--line); cursor:default}
-  .log-btn{background:var(--gold-soft); color:#9A6B00; border:1px solid var(--gold)}
+  .log-btn{background:var(--gold-soft); color:#85540E; border:1px solid var(--gold)}
   .log-btn:hover{background:var(--gold); color:var(--ink)}
   .edit-btn{background:#fff; color:var(--ink); border:1px solid var(--line)}
   .edit-btn:hover{border-color:var(--cherry); color:var(--cherry)}
@@ -152,11 +180,11 @@
   .fab-row{position:fixed; bottom:20px; left:0; right:0; display:flex; gap:10px;
     justify-content:center; z-index:30; pointer-events:none}
   .fab{pointer-events:auto; border:none; cursor:pointer; font-family:inherit; font-weight:800;
-    font-size:14px; padding:13px 20px; border-radius:999px; box-shadow:0 12px 28px -8px rgba(160,70,100,.5)}
+    font-size:14px; padding:13px 20px; border-radius:999px; box-shadow:0 12px 28px -8px rgba(140,80,35,.5)}
   .fab.spin{background:var(--ink); color:#fff}
   .fab.add{background:var(--cherry); color:#fff}
 
-  .scrim{position:fixed; inset:0; background:rgba(70,41,58,.4); display:none; align-items:flex-start;
+  .scrim{position:fixed; inset:0; background:rgba(75,46,33,.42); display:none; align-items:flex-start;
     justify-content:center; z-index:40; padding:24px 18px; overflow:auto}
   .scrim.show{display:flex}
   .modal{background:var(--cream); border-radius:24px; padding:22px; width:100%; max-width:400px;
@@ -182,7 +210,7 @@
   .chipwrap .chip{font-size:12px; padding:5px 10px}
   .rate-row{display:flex; align-items:center; gap:12px}
   .stars-pick{display:flex; gap:3px}
-  .stars-pick button{background:none; border:none; cursor:pointer; font-size:26px; line-height:1; color:#E7D3DA; padding:0}
+  .stars-pick button{background:none; border:none; cursor:pointer; font-size:26px; line-height:1; color:var(--empty-star); padding:0}
   .stars-pick button.on{color:var(--gold)}
   .rate-clear{background:none; border:none; color:var(--muted); font-family:inherit; font-weight:700;
     font-size:12px; cursor:pointer; text-decoration:underline}
@@ -231,12 +259,21 @@
   .tagline{font-size:13px}
   nav{gap:4px}
   .tab{font-size:13px; padding:8px 12px}
-  .filters{padding:12px 12px}
-  .flabel{min-width:100%; margin-bottom:2px}
+  .filters{padding:10px}
+  .ftop{gap:8px}
+  .seg-group{width:100%}
+  .seg-btn{flex:1}
+  .drops{flex:1}
+  .drop-btn{flex:1}
   .chip{padding:8px 13px; font-size:13px}
   .grid{grid-template-columns:repeat(2,1fr); gap:12px}
   .ctitle{font-size:13px}
   .act-btn{font-size:12.5px; padding:8px 0}
+  .list-row{padding:10px 12px; gap:10px}
+  .lr-title{font-size:14px}
+  .list-row.is-alert{flex-wrap:wrap}
+  .list-row.is-alert .lr-actions{width:100%}
+  .list-row.is-alert .act-btn{flex:1; padding:9px 12px}
   .trend-card{flex-basis:104px}
   .trend-poster{width:104px}
   .detail-head{gap:10px}
@@ -266,8 +303,9 @@
 <div class="wrap">
   <button class="account" id="account-btn" onclick="openLogin()">☕ Sign in</button>
   <header>
+    <div class="garland">🍂🎃🍁☕🍂</div>
     <div class="logo">My Watch<span class="heart">♥</span>list</div>
-    <div class="tagline">your cozy little archive of everything worth watching</div>
+    <div class="tagline">your cozy little sweater-weather archive of everything worth watching</div>
   </header>
 
   <nav id="nav"></nav>
@@ -288,7 +326,7 @@
       <svg class="tmdb-logo-svg" role="img" aria-label="The Movie Database (TMDB)" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 423.04 35.4"><defs><style>.tmdb-cls{fill:url(#tmdb-grad);}</style><linearGradient id="tmdb-grad" y1="17.7" x2="423.04" y2="17.7" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#90cea1"/><stop offset="0.56" stop-color="#3cbec9"/><stop offset="1" stop-color="#00b3e5"/></linearGradient></defs><g id="Layer_2" data-name="Layer 2"><g id="Layer_1-2" data-name="Layer 1"><path class="tmdb-cls" d="M227.5,0h8.9l8.75,23.2h.1L254.15,0h8.35L247.9,35.4h-6.25Zm46.6,0h7.8V35.4h-7.8Zm22.2,0h24.05V7.2H304.1v6.6h15.35V21H304.1v7.2h17.15v7.2H296.3Zm55,0H363a33.54,33.54,0,0,1,8.07,1A18.55,18.55,0,0,1,377.75,4a15.1,15.1,0,0,1,4.52,5.53A18.5,18.5,0,0,1,384,17.8a16.91,16.91,0,0,1-1.63,7.58,16.37,16.37,0,0,1-4.37,5.5,19.52,19.52,0,0,1-6.35,3.37A24.59,24.59,0,0,1,364,35.4H351.29Zm7.81,28.2h4a21.57,21.57,0,0,0,5-.55,10.87,10.87,0,0,0,4-1.83,8.69,8.69,0,0,0,2.67-3.34,11.92,11.92,0,0,0,1-5.08,9.87,9.87,0,0,0-1-4.52,9,9,0,0,0-2.62-3.18,11.68,11.68,0,0,0-3.88-1.88,17.43,17.43,0,0,0-4.67-.62h-4.6ZM395.24,0h13.2a34.42,34.42,0,0,1,4.63.32,12.9,12.9,0,0,1,4.17,1.3,7.88,7.88,0,0,1,3,2.73A8.34,8.34,0,0,1,421.39,9a7.42,7.42,0,0,1-1.67,5,9.28,9.28,0,0,1-4.43,2.82v.1a10,10,0,0,1,3.18,1,8.38,8.38,0,0,1,2.45,1.85,7.79,7.79,0,0,1,1.57,2.62,9.16,9.16,0,0,1,.55,3.2,8.52,8.52,0,0,1-1.2,4.68,9.42,9.42,0,0,1-3.1,3,13.38,13.38,0,0,1-4.27,1.65,23.11,23.11,0,0,1-4.73.5h-14.5ZM403,14.15h5.65a8.16,8.16,0,0,0,1.78-.2A4.78,4.78,0,0,0,412,13.3a3.34,3.34,0,0,0,1.13-1.2,3.63,3.63,0,0,0,.42-1.8,3.22,3.22,0,0,0-.47-1.82,3.33,3.33,0,0,0-1.23-1.13,5.77,5.77,0,0,0-1.7-.58,10.79,10.79,0,0,0-1.85-.17H403Zm0,14.65h7a8.91,8.91,0,0,0,1.83-.2,4.78,4.78,0,0,0,1.67-.7,4,4,0,0,0,1.23-1.3,3.71,3.71,0,0,0,.47-2,3.13,3.13,0,0,0-.62-2A4,4,0,0,0,413,21.45,7.83,7.83,0,0,0,411,20.9a15.12,15.12,0,0,0-2.05-.15H403Zm-199,6.53H205a17.66,17.66,0,0,0,17.66-17.66h0A17.67,17.67,0,0,0,205,0h-.91A17.67,17.67,0,0,0,186.4,17.67h0A17.66,17.66,0,0,0,204.06,35.33ZM10.1,6.9H0V0H28V6.9H17.9V35.4H10.1ZM39,0h7.8V13.2H61.9V0h7.8V35.4H61.9V20.1H46.75V35.4H39ZM80.2,0h24V7.2H88v6.6h15.35V21H88v7.2h17.15v7.2h-25Zm55,0H147l8.15,23.1h.1L163.45,0H175.2V35.4h-7.8V8.25h-.1L158,35.4h-5.95l-9-27.15H143V35.4h-7.8Z"/></g></g></svg>
     </a>
     <p>Movie &amp; TV data provided by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
-    <p style="font-size:10px;color:var(--muted);opacity:.7;margin-top:6px">build 24 · tap a title for details</p>
+    <p style="font-size:10px;color:var(--muted);opacity:.7;margin-top:6px">build 26 · tap a title for details</p>
   </footer>
 </div>
 
@@ -301,13 +339,13 @@
 <div class="scrim" id="login-scrim">
   <div class="modal">
     <div id="login-signedout">
-      <h2>Welcome 💕</h2>
+      <h2>Welcome 🍂</h2>
       <p class="sub">Sign in to save your watchlist and sync it across your phone &amp; laptop. No password — we'll email you a link.</p>
       <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@email.com" autocomplete="email"></div>
       <button class="btn-primary" style="width:100%" onclick="sendMagicLink()">Email me a magic link ✨</button>
     </div>
     <div id="login-signedin" style="display:none">
-      <h2>You're in 🎀</h2>
+      <h2>You're in 🍁</h2>
       <p class="sub">Signed in as <b id="login-who"></b>. Everything you log saves &amp; syncs automatically.</p>
       <button class="btn-primary" style="width:100%;background:var(--ink)" onclick="signOut()">Sign out</button>
     </div>
@@ -432,9 +470,9 @@ const GENRE_LIST = Object.keys(GENRE_EMOJI).filter(g=>g!=='other');
 const MOOD_LIST = ['feel-good','fun','cozy','brain-off','dramatic','spicy','nostalgic','with-friends',
   'inspiring','moving','binge-worthy','date-night','funny','tear-jerker','edge-of-seat'];
 const GRADS = [
-  'linear-gradient(160deg,#F7C9D9,#E9A7C4)','linear-gradient(160deg,#F5D6A8,#E9AEB0)',
-  'linear-gradient(160deg,#CBB6E4,#E4A7C9)','linear-gradient(160deg,#F6BBC5,#F0C98C)',
-  'linear-gradient(160deg,#B7D3E8,#D9B8E0)','linear-gradient(160deg,#F3B7C0,#C9A2D4)'
+  'linear-gradient(160deg,#F4C79A,#D9813F)','linear-gradient(160deg,#EBC9A0,#B9693A)',
+  'linear-gradient(160deg,#EFD9A8,#C99446)','linear-gradient(160deg,#E2BE98,#A0573A)',
+  'linear-gradient(160deg,#D7D4AA,#8E9B6A)','linear-gradient(160deg,#F1C27D,#C2603A)'
 ];
 let uid = 0;
 /* item: {id,title,type,status,rating,comfort,spice,genres[],moods[],tmdbId,poster,year} */
@@ -629,40 +667,57 @@ function renderNav(){
     return `<button class="tab ${currentPage===p.id?'active':''}" onclick="go('${p.id}')">${p.label}<span class="count">${n}</span></button>`;
   }).join('');
 }
+let openPanel = null; // which filter drawer is open: 'vibes' | 'genre' | null
+function togglePanel(p){ openPanel = (openPanel===p) ? null : p; renderFilters(); }
 function renderFilters(){
-  const moodChips = [...MOOD_LIST].sort().map(m=>`<button class="chip ${filterState.moods.has(m)?'on':''}" onclick="toggleSet('moods','${m}')">${m}</button>`).join('');
-  const genreChips = [...GENRE_LIST].sort().map(g=>`<button class="chip ${filterState.genres.has(g)?'on':''}" onclick="toggleSet('genres','${g}')">${GENRE_EMOJI[g]||'🎬'} ${g}</button>`).join('');
-  const typeChips = [['any','All'],['movie','🎬 Movies'],['show','📺 Shows']].map(([v,l])=>`<button class="chip ${filterState.type===v?'on':''}" onclick="setType('${v}')">${l}</button>`).join('');
+  const typeSeg = [['any','All'],['movie','🎬 Movies'],['show','📺 Shows']]
+    .map(([v,l])=>`<button class="seg-btn ${filterState.type===v?'on':''}" onclick="setType('${v}')">${l}</button>`).join('');
+  const nM = filterState.moods.size, nG = filterState.genres.size;
+  const drop = (key,label,n)=>`<button class="drop-btn ${openPanel===key?'open':''} ${n?'has':''}" onclick="togglePanel('${key}')">${label}${n?`<span class="fcount">${n}</span>`:''}<span class="caret">▾</span></button>`;
+  const clear = filtersActive() ? `<button class="clear" onclick="clearFilters()">clear all</button>` : '';
+  let panel = '';
+  if(openPanel){
+    const isV = openPanel==='vibes';
+    const chips = isV
+      ? [...MOOD_LIST].sort().map(m=>`<button class="chip ${filterState.moods.has(m)?'on':''}" onclick="toggleSet('moods','${m}')">${m}</button>`).join('')
+      : [...GENRE_LIST].sort().map(g=>`<button class="chip ${filterState.genres.has(g)?'on':''}" onclick="toggleSet('genres','${g}')">${GENRE_EMOJI[g]||'🎬'} ${g}</button>`).join('');
+    panel = `<div class="fpanel">
+      <div class="fpanel-head"><span>${isV?'What are we in the mood for?':'Pick your genres'}</span>
+        <div class="match"><span>match</span>
+          <button class="mini ${filterMode==='any'?'on':''}" onclick="setFilterMode('any')">any</button>
+          <button class="mini ${filterMode==='all'?'on':''}" onclick="setFilterMode('all')">all</button>
+        </div>
+      </div>
+      <div class="chiprow">${chips}</div>
+    </div>`;
+  }
+  // when the drawer is closed, show what's picked as little removable tags
+  const picked = [
+    ...[...filterState.moods].map(m=>({k:'moods', v:m, l:m})),
+    ...[...filterState.genres].map(g=>({k:'genres', v:g, l:(GENRE_EMOJI[g]||'🎬')+' '+g}))
+  ];
+  const pickedRow = (picked.length && !openPanel)
+    ? `<div class="picked">${picked.map(p=>`<button class="picked-chip" onclick="toggleSet('${p.k}','${p.v}')">${p.l} <span>✕</span></button>`).join('')}${picked.length>1?`<button class="picked-mode" onclick="setFilterMode('${filterMode==='all'?'any':'all'}')">matching ${filterMode==='all'?'all':'any'} tag</button>`:''}</div>`
+    : '';
   const hc = library.filter(i=>i.hidden).length;
-  const hiddenLink = (hc||currentPage==='hidden') ? `<div class="frow" style="justify-content:flex-end;margin:8px 0 0"><button class="hidden-link ${currentPage==='hidden'?'on':''}" onclick="toggleHidden()">${currentPage==='hidden'?'✕ close not-interested':`🙈 Not interested (${hc})`}</button></div>` : '';
-  const modeSwitch = `<div class="frow"><span class="flabel">Match</span>`+
-    `<button class="chip ${filterMode==='any'?'on':''}" onclick="setFilterMode('any')">any tag</button>`+
-    `<button class="chip ${filterMode==='all'?'on':''}" onclick="setFilterMode('all')">all tags</button>`+
-    `<span style="font-size:11px;color:var(--muted);margin-left:6px">${filterMode==='all'?'must match every tag you pick':'matches at least one'}</span></div>`;
-  // remember whether each dropdown was open before we overwrite the DOM, so picking a chip doesn't snap it shut
-  const wasOpen = id => { const el=document.getElementById(id); return el ? el.open : false; };
-  const vibesOpen = wasOpen('vibes-details'), genreOpen = wasOpen('genre-details');
-  const vibesCount = filterState.moods.size ? `<span class="fcount">${filterState.moods.size}</span>` : '';
-  const genreCount = filterState.genres.size ? `<span class="fcount">${filterState.genres.size}</span>` : '';
+  const hiddenLink = (hc||currentPage==='hidden') ? `<div class="hidden-row"><button class="hidden-link ${currentPage==='hidden'?'on':''}" onclick="toggleHidden()">${currentPage==='hidden'?'✕ close not-interested':`🙈 Not interested (${hc})`}</button></div>` : '';
   document.getElementById('filters').innerHTML =
-    modeSwitch +
-    `<div class="frow"><span class="flabel">Type</span>${typeChips}<button class="clear" onclick="clearFilters()">clear all</button></div>
-     <details id="vibes-details" ${vibesOpen?'open':''}><summary>Vibes ${vibesCount}</summary><div class="frow">${moodChips}</div></details>
-     <details id="genre-details" ${genreOpen?'open':''}><summary>Genre ${genreCount}</summary><div class="frow">${genreChips}</div></details>${hiddenLink}`;
+    `<div class="ftop"><div class="seg-group">${typeSeg}</div><div class="drops">${drop('vibes','🍂 Vibes',nM)}${drop('genre','🎃 Genre',nG)}</div>${clear}</div>`
+    + panel + pickedRow + hiddenLink;
 }
 function listRowHTML(i){
   const alert = isAlert(i);
   const btn = alert
-    ? `<button class="act-btn log-btn" onclick="caughtUp(${i.id})">✓ New season</button>`
+    ? `<button class="act-btn log-btn" onclick="caughtUp(${i.id})">✓ I watched it</button>`
     : `<button class="act-btn edit-btn" onclick="openEntry(${i.id})">✏️ Edit</button>`;
   const stars = i.rating ? `<span class="lr-stars">${starStr(i.rating)}</span>` : `<span class="lr-unrated">unrated</span>`;
-  const comfort = i.comfort ? `<span class="lr-comfort" title="Comfort rewatch">⭐</span>` : '';
-  const alertMeta = alert ? `<span class="lr-alert">🔔 New season ${fmtMonth(i.newSeasonAir)}</span>` : '';
+  const comfort = i.comfort ? `<span title="Comfort rewatch">⭐</span>` : '';
+  const alertMeta = alert ? `<span class="lr-alert">🔔 New season · ${fmtMonth(i.newSeasonAir)}</span>` : '';
   const clickAttr = i.tmdbId ? `onclick="openDetail(${i.tmdbId},'${i.type}',${i.id})"` : '';
-  return `<div class="list-row">
+  return `<div class="list-row ${alert?'is-alert':''}">
     <div class="lr-main">
       <span class="lr-title" style="cursor:${i.tmdbId?'pointer':'default'}" ${clickAttr}>${i.title}</span>
-      ${stars}${comfort}${alertMeta}
+      <div class="lr-meta">${stars}${comfort}${alertMeta}</div>
     </div>
     <div class="lr-actions">${btn}</div>
   </div>`;
@@ -706,7 +761,7 @@ function renderContent(){
     const hitems = sortByRankThenAlpha(library.filter(i=>i.hidden && passesFilter(i)));
     box.innerHTML = `<div class="tiergroup"><div class="tierhead"><h3>🙈 Not interested</h3><div class="rule"></div></div>`
       + (hitems.length ? `<div class="grid">${hitems.map(cardHTML).join('')}</div>`
-        : `<div class="empty"><span>🌸</span>Nothing hidden right now.</div>`) + `</div>`;
+        : `<div class="empty"><span>🍂</span>Nothing hidden right now.</div>`) + `</div>`;
     return;
   }
   if(currentPage==='rec'){
@@ -721,7 +776,7 @@ function renderContent(){
     html += `<div class="tiergroup"><div class="tierhead"><h3>✨ Recommended for you</h3><div class="rule"></div></div>`;
     html += combined.length
       ? `<div class="grid">${combined.map(r=> r.status===undefined ? recCardHTML(r) : cardHTML(r)).join('')}</div>`
-      : `<div class="empty" style="padding:20px"><span>🌷</span>${loading?'Finding picks for your taste…':'Nothing matched — try a different tag or hit refresh.'}</div>`;
+      : `<div class="empty" style="padding:20px"><span>🍁</span>${loading?'Finding picks for your taste…':'Nothing matched — try a different tag or hit refresh.'}</div>`;
     if(useDisc && filterRecs.length){
       html += `<div style="text-align:center;margin-top:16px">${filterRecsLoading?'<span class="rec-loading">finding more…</span>':`<button class="refresh-btn" onclick="showMoreRecs()">＋ Show more</button>`}</div>`;
     } else if(!useDisc && recs.length){
@@ -732,7 +787,7 @@ function renderContent(){
     return;
   }
   const items = library.filter(i=>pageOf(i)===currentPage && !i.hidden && passesFilter(i));
-  if(!items.length){ box.innerHTML = `<div class="empty"><span>🍿</span>Nothing here with those filters yet.</div>`; return; }
+  if(!items.length){ box.innerHTML = `<div class="empty"><span>🎃</span>Nothing here with those filters yet.</div>`; return; }
   let html='';
   if(currentPage==='watched'){
     html += GROUPS.map(g=>{
@@ -948,7 +1003,7 @@ function rollSurprise(){
     pool = library.filter(i=>ok(i));
   }
   const res=document.getElementById('surprise-result');
-  if(!pool.length){ res.innerHTML=`<div class="empty" style="padding:20px 0"><span>🫧</span>Nothing matches — loosen it up!</div>`; return; }
+  if(!pool.length){ res.innerHTML=`<div class="empty" style="padding:20px 0"><span>🍂</span>Nothing matches — loosen it up!</div>`; return; }
   const pick=pool[Math.floor(Math.random()*pool.length)];
   res.innerHTML=`<div class="result-card">
     <div class="result-poster" style="background:${gradFor(pick)}">${pick.poster?`<img src="${pick.poster}" alt="">`:emojiFor(pick)}</div>
@@ -1175,7 +1230,7 @@ function recsHTML(){
   const head = `<div class="tierhead"><h3>✨ Recommended for you</h3><div class="rule"></div>${refresh}</div>`;
   const shown = recs.filter(r=> (filterState.type==='any'||r.type===filterState.type)
     && (!filterState.genres.size || [...filterState.genres].every(g=>r.genres.includes(g))));
-  if(!shown.length) return `<div class="tiergroup">${head}<div class="empty" style="padding:20px"><span>🌷</span>${recsLoading?'Finding picks for your taste…':'Rate a few things you love, then hit refresh — these tune to you.'}</div></div>`;
+  if(!shown.length) return `<div class="tiergroup">${head}<div class="empty" style="padding:20px"><span>🍁</span>${recsLoading?'Finding picks for your taste…':'Rate a few things you love, then hit refresh — these tune to you.'}</div></div>`;
   return `<div class="tiergroup">${head}<div class="grid">${shown.map(r=>recCardHTML(r)).join('')}</div></div>`;
 }
 function recCardHTML(r){
